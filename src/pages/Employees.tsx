@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from "@/components/ui/button";
@@ -550,7 +551,7 @@ const EmployeesPage = () => {
                     <CardContent>
                       <div className="space-y-6">
                         <div>
-                          <h4 className="text-sm font-medium mb-2">Overloaded (>75%)</h4>
+                          <h4 className="text-sm font-medium mb-2">Overloaded (&gt;75%)</h4>
                           <div className="flex flex-wrap gap-2">
                             {employeesMock
                               .filter(emp => emp.workload > 75)
@@ -588,7 +589,7 @@ const EmployeesPage = () => {
                         </div>
                         
                         <div>
-                          <h4 className="text-sm font-medium mb-2">Available (<25%)</h4>
+                          <h4 className="text-sm font-medium mb-2">Available (&lt;25%)</h4>
                           <div className="flex flex-wrap gap-2">
                             {employeesMock
                               .filter(emp => emp.workload < 25)
