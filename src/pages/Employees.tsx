@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { SidebarLayout } from '@/components/layout/sidebar';
+import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -345,272 +344,277 @@ const EmployeesPage = () => {
   });
   
   return (
-    <SidebarLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
-          <div className="w-full md:w-auto flex flex-wrap gap-3">
-            <div className="relative w-full md:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search employees..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-1">
-                  <Filter size={16} />
-                  <span className="hidden md:inline">Department</span>
+    <div className="flex min-h-screen bg-background">
+      <Sidebar />
+      <main className="flex-1 ml-[240px] transition-all duration-300 ease-in-out">
+        <div className="container mx-auto p-4 md:p-6">
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
+              <div className="w-full md:w-auto flex flex-wrap gap-3">
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search employees..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-1">
+                      <Filter size={16} />
+                      <span className="hidden md:inline">Department</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setFilterDepartment('all')}>
+                      All Departments
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setFilterDepartment('operations')}>
+                      Operations
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setFilterDepartment('engineering')}>
+                      Engineering
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setFilterDepartment('marketing')}>
+                      Marketing
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setFilterDepartment('design')}>
+                      Design
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setFilterDepartment('human resources')}>
+                      Human Resources
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button>
+                  <Plus size={16} className="mr-1" />
+                  Add Employee
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setFilterDepartment('all')}>
-                  All Departments
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setFilterDepartment('operations')}>
-                  Operations
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilterDepartment('engineering')}>
-                  Engineering
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilterDepartment('marketing')}>
-                  Marketing
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilterDepartment('design')}>
-                  Design
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilterDepartment('human resources')}>
-                  Human Resources
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button>
-              <Plus size={16} className="mr-1" />
-              Add Employee
-            </Button>
-          </div>
-        </div>
-        
-        <Tabs defaultValue="team" className="w-full">
-          <TabsList>
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="departments">Departments</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="team" className="mt-6">
-            <div className="flex justify-end mb-4">
-              <div className="flex border rounded-md overflow-hidden">
-                <button
-                  className={`px-3 py-1 text-sm ${view === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
-                  onClick={() => setView('grid')}
-                >
-                  Grid
-                </button>
-                <button
-                  className={`px-3 py-1 text-sm ${view === 'table' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
-                  onClick={() => setView('table')}
-                >
-                  Table
-                </button>
               </div>
             </div>
             
-            {view === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredEmployees.map(employee => (
-                  <EmployeeCard key={employee.id} employee={employee} />
-                ))}
-                {filteredEmployees.length === 0 && (
-                  <div className="col-span-full py-10 text-center">
-                    <p className="text-muted-foreground">No employees found matching your criteria.</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left py-3 px-4">Employee</th>
-                          <th className="text-left py-3 px-4">Role</th>
-                          <th className="text-left py-3 px-4">Department</th>
-                          <th className="text-left py-3 px-4">Status</th>
-                          <th className="text-left py-3 px-4">Workload</th>
-                          <th className="text-left py-3 px-4">Tasks</th>
-                          <th className="text-right py-3 px-4">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredEmployees.map(employee => (
-                          <EmployeeRow key={employee.id} employee={employee} />
-                        ))}
-                        {filteredEmployees.length === 0 && (
-                          <tr>
-                            <td colSpan={7} className="py-10 text-center text-muted-foreground">
-                              No employees found matching your criteria.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="departments" className="mt-6">
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left py-3 px-4">Department</th>
-                        <th className="text-left py-3 px-4">Employees</th>
-                        <th className="text-left py-3 px-4">Active Projects</th>
-                        <th className="text-left py-3 px-4">Completion Rate</th>
-                        <th className="text-right py-3 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {departmentSummary.map((dept, index) => (
-                        <tr key={index} className="border-b hover:bg-muted/50">
-                          <td className="py-3 px-4 font-medium">{dept.name}</td>
-                          <td className="py-3 px-4">{dept.employees}</td>
-                          <td className="py-3 px-4">{dept.activeProjects}</td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <Progress 
-                                value={dept.completionRate} 
-                                className="h-2 w-24" 
-                                indicatorClassName={
-                                  dept.completionRate > 80 
-                                    ? "bg-green-500" 
-                                    : dept.completionRate > 60 
-                                      ? "bg-yellow-500" 
-                                      : "bg-red-500"
-                                }
-                              />
-                              <span className="text-sm">{dept.completionRate}%</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Button variant="ghost" size="sm">View Details</Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="analytics" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Distribution</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {departmentSummary.map((dept, index) => (
-                      <div key={index}>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm font-medium">{dept.name}</span>
-                          <span className="text-sm text-muted-foreground">{dept.employees} employees</span>
-                        </div>
-                        <div className="h-2 w-full bg-muted rounded overflow-hidden">
-                          <div 
-                            className="h-full bg-primary" 
-                            style={{ width: `${(dept.employees / employeesMock.length) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+            <Tabs defaultValue="team" className="w-full">
+              <TabsList>
+                <TabsTrigger value="team">Team</TabsTrigger>
+                <TabsTrigger value="departments">Departments</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              </TabsList>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Workload Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Overloaded (>75%)</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {employeesMock
-                          .filter(emp => emp.workload > 75)
-                          .map(emp => (
-                            <div key={emp.id} className="flex items-center gap-2 bg-muted p-2 rounded">
-                              <Avatar className={`h-6 w-6 ${emp.avatarColor}`}>
-                                <span className="text-[10px] text-white">{emp.avatar}</span>
-                              </Avatar>
-                              <span className="text-sm">{emp.name}</span>
-                              <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500">
-                                {emp.workload}%
-                              </Badge>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Balanced (25-75%)</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {employeesMock
-                          .filter(emp => emp.workload >= 25 && emp.workload <= 75)
-                          .map(emp => (
-                            <div key={emp.id} className="flex items-center gap-2 bg-muted p-2 rounded">
-                              <Avatar className={`h-6 w-6 ${emp.avatarColor}`}>
-                                <span className="text-[10px] text-white">{emp.avatar}</span>
-                              </Avatar>
-                              <span className="text-sm">{emp.name}</span>
-                              <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
-                                {emp.workload}%
-                              </Badge>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Available (<25%)</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {employeesMock
-                          .filter(emp => emp.workload < 25)
-                          .map(emp => (
-                            <div key={emp.id} className="flex items-center gap-2 bg-muted p-2 rounded">
-                              <Avatar className={`h-6 w-6 ${emp.avatarColor}`}>
-                                <span className="text-[10px] text-white">{emp.avatar}</span>
-                              </Avatar>
-                              <span className="text-sm">{emp.name}</span>
-                              <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500">
-                                {emp.workload}%
-                              </Badge>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
+              <TabsContent value="team" className="mt-6">
+                <div className="flex justify-end mb-4">
+                  <div className="flex border rounded-md overflow-hidden">
+                    <button
+                      className={`px-3 py-1 text-sm ${view === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setView('grid')}
+                    >
+                      Grid
+                    </button>
+                    <button
+                      className={`px-3 py-1 text-sm ${view === 'table' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                      onClick={() => setView('table')}
+                    >
+                      Table
+                    </button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </SidebarLayout>
+                </div>
+                
+                {view === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredEmployees.map(employee => (
+                      <EmployeeCard key={employee.id} employee={employee} />
+                    ))}
+                    {filteredEmployees.length === 0 && (
+                      <div className="col-span-full py-10 text-center">
+                        <p className="text-muted-foreground">No employees found matching your criteria.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Card>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="text-left py-3 px-4">Employee</th>
+                              <th className="text-left py-3 px-4">Role</th>
+                              <th className="text-left py-3 px-4">Department</th>
+                              <th className="text-left py-3 px-4">Status</th>
+                              <th className="text-left py-3 px-4">Workload</th>
+                              <th className="text-left py-3 px-4">Tasks</th>
+                              <th className="text-right py-3 px-4">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredEmployees.map(employee => (
+                              <EmployeeRow key={employee.id} employee={employee} />
+                            ))}
+                            {filteredEmployees.length === 0 && (
+                              <tr>
+                                <td colSpan={7} className="py-10 text-center text-muted-foreground">
+                                  No employees found matching your criteria.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="departments" className="mt-6">
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-3 px-4">Department</th>
+                            <th className="text-left py-3 px-4">Employees</th>
+                            <th className="text-left py-3 px-4">Active Projects</th>
+                            <th className="text-left py-3 px-4">Completion Rate</th>
+                            <th className="text-right py-3 px-4">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {departmentSummary.map((dept, index) => (
+                            <tr key={index} className="border-b hover:bg-muted/50">
+                              <td className="py-3 px-4 font-medium">{dept.name}</td>
+                              <td className="py-3 px-4">{dept.employees}</td>
+                              <td className="py-3 px-4">{dept.activeProjects}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <Progress 
+                                    value={dept.completionRate} 
+                                    className="h-2 w-24" 
+                                    indicatorClassName={
+                                      dept.completionRate > 80 
+                                        ? "bg-green-500" 
+                                        : dept.completionRate > 60 
+                                          ? "bg-yellow-500" 
+                                          : "bg-red-500"
+                                    }
+                                  />
+                                  <span className="text-sm">{dept.completionRate}%</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <Button variant="ghost" size="sm">View Details</Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="analytics" className="mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Team Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {departmentSummary.map((dept, index) => (
+                          <div key={index}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium">{dept.name}</span>
+                              <span className="text-sm text-muted-foreground">{dept.employees} employees</span>
+                            </div>
+                            <div className="h-2 w-full bg-muted rounded overflow-hidden">
+                              <div 
+                                className="h-full bg-primary" 
+                                style={{ width: `${(dept.employees / employeesMock.length) * 100}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Workload Analysis</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Overloaded (>75%)</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {employeesMock
+                              .filter(emp => emp.workload > 75)
+                              .map(emp => (
+                                <div key={emp.id} className="flex items-center gap-2 bg-muted p-2 rounded">
+                                  <Avatar className={`h-6 w-6 ${emp.avatarColor}`}>
+                                    <span className="text-[10px] text-white">{emp.avatar}</span>
+                                  </Avatar>
+                                  <span className="text-sm">{emp.name}</span>
+                                  <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500">
+                                    {emp.workload}%
+                                  </Badge>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Balanced (25-75%)</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {employeesMock
+                              .filter(emp => emp.workload >= 25 && emp.workload <= 75)
+                              .map(emp => (
+                                <div key={emp.id} className="flex items-center gap-2 bg-muted p-2 rounded">
+                                  <Avatar className={`h-6 w-6 ${emp.avatarColor}`}>
+                                    <span className="text-[10px] text-white">{emp.avatar}</span>
+                                  </Avatar>
+                                  <span className="text-sm">{emp.name}</span>
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
+                                    {emp.workload}%
+                                  </Badge>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="text-sm font-medium mb-2">Available (<25%)</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {employeesMock
+                              .filter(emp => emp.workload < 25)
+                              .map(emp => (
+                                <div key={emp.id} className="flex items-center gap-2 bg-muted p-2 rounded">
+                                  <Avatar className={`h-6 w-6 ${emp.avatarColor}`}>
+                                    <span className="text-[10px] text-white">{emp.avatar}</span>
+                                  </Avatar>
+                                  <span className="text-sm">{emp.name}</span>
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500">
+                                    {emp.workload}%
+                                  </Badge>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 };
 
