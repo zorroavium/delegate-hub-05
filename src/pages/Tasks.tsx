@@ -27,6 +27,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Link } from 'react-router-dom';
+import { CreateTaskDialog } from '@/components/tasks/create-task-dialog';
+import { useToast } from "@/hooks/use-toast";
 
 // Mock data for tasks
 const tasksMock = [
@@ -180,9 +182,12 @@ const TaskCard = ({ task }: { task: any }) => {
 const TasksPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
+  const [tasks, setTasks] = useState(tasksMock);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { toast } = useToast();
   
   // Filter tasks based on status and search query
-  const filteredTasks = tasksMock.filter(task => {
+  const filteredTasks = tasks.filter(task => {
     // Apply tab filter
     if (filter !== 'all' && task.status !== filter) {
       return false;
@@ -195,6 +200,15 @@ const TasksPage = () => {
     
     return true;
   });
+
+  // Handle task creation
+  const handleTaskCreated = (newTask: any) => {
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+    toast({
+      title: "Task Created",
+      description: `"${newTask.title}" has been created successfully.`
+    });
+  };
   
   return (
     <SidebarLayout>
@@ -240,7 +254,7 @@ const TasksPage = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus size={16} className="mr-1" />
               New Task
             </Button>
@@ -308,6 +322,13 @@ const TasksPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Task Creation Dialog */}
+      <CreateTaskDialog 
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onTaskCreated={handleTaskCreated}
+      />
     </SidebarLayout>
   );
 };
