@@ -233,87 +233,89 @@ const CalendarPage = () => {
               </Tabs>
             </div>
             
-            <TabsContent value="month">
-              <div className="rounded-md border">
-                <CalendarComponent
-                  mode="single"
-                  selected={date}
-                  onSelect={(newDate) => newDate && setDate(newDate)}
-                  className="p-3 pointer-events-auto"
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="week">
-              <div className="rounded-md border">
-                <div className="grid grid-cols-7 text-center p-2 bg-muted/20">
-                  {weekDays.map((day) => (
-                    <div key={day.toString()} className="text-sm font-medium">
-                      {format(day, 'EEE')}
-                      <div className="text-xs text-muted-foreground">{format(day, 'MMM d')}</div>
-                    </div>
-                  ))}
+            <Tabs value={view} onValueChange={setView}>
+              <TabsContent value="month">
+                <div className="rounded-md border">
+                  <CalendarComponent
+                    mode="single"
+                    selected={date}
+                    onSelect={(newDate) => newDate && setDate(newDate)}
+                    className="p-3 pointer-events-auto"
+                  />
                 </div>
-                
-                <div className="grid grid-cols-7 gap-1 p-2">
-                  {eventsByDay.map((day) => (
-                    <div key={day.date.toString()} className="border rounded-md p-2 min-h-[200px]">
-                      <div className="text-center mb-2">
-                        <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full 
-                          ${isSameDay(day.date, new Date()) ? 'bg-primary text-primary-foreground' : ''}`}>
-                          {format(day.date, 'd')}
-                        </div>
+              </TabsContent>
+              
+              <TabsContent value="week">
+                <div className="rounded-md border">
+                  <div className="grid grid-cols-7 text-center p-2 bg-muted/20">
+                    {weekDays.map((day) => (
+                      <div key={day.toString()} className="text-sm font-medium">
+                        {format(day, 'EEE')}
+                        <div className="text-xs text-muted-foreground">{format(day, 'MMM d')}</div>
                       </div>
-                      <div className="space-y-1">
-                        {day.events.map((event) => (
-                          <div 
-                            key={event.id} 
-                            className="text-xs p-1 rounded bg-blue-50 dark:bg-blue-900/20 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                          >
-                            <div className="flex items-center gap-1">
-                              <div className={`h-2 w-2 rounded-full ${event.type === 'task' ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
-                              <span>{event.title}</span>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">{event.time}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="day">
-              <div className="rounded-md border p-4">
-                <div className="text-center mb-4">
-                  <h3 className="text-lg font-medium">{format(date, 'EEEE, MMMM d, yyyy')}</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-muted-foreground" />
-                    <h4 className="font-medium">Scheduled Events</h4>
+                    ))}
                   </div>
                   
-                  {eventsMock
-                    .filter(event => isSameDay(parseISO(event.date), date))
-                    .map(event => (
-                      <EventCard key={event.id} event={event} />
+                  <div className="grid grid-cols-7 gap-1 p-2">
+                    {eventsByDay.map((day) => (
+                      <div key={day.date.toString()} className="border rounded-md p-2 min-h-[200px]">
+                        <div className="text-center mb-2">
+                          <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full 
+                            ${isSameDay(day.date, new Date()) ? 'bg-primary text-primary-foreground' : ''}`}>
+                            {format(day.date, 'd')}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          {day.events.map((event) => (
+                            <div 
+                              key={event.id} 
+                              className="text-xs p-1 rounded bg-blue-50 dark:bg-blue-900/20 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                            >
+                              <div className="flex items-center gap-1">
+                                <div className={`h-2 w-2 rounded-full ${event.type === 'task' ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
+                                <span>{event.title}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground mt-0.5">{event.time}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     ))}
-                  
-                  {!eventsMock.some(event => isSameDay(parseISO(event.date), date)) && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No events scheduled for today</p>
-                      <Button variant="outline" className="mt-2">
-                        <Plus size={16} className="mr-1" />
-                        Add Event
-                      </Button>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
+              </TabsContent>
+              
+              <TabsContent value="day">
+                <div className="rounded-md border p-4">
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-medium">{format(date, 'EEEE, MMMM d, yyyy')}</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-muted-foreground" />
+                      <h4 className="font-medium">Scheduled Events</h4>
+                    </div>
+                    
+                    {eventsMock
+                      .filter(event => isSameDay(parseISO(event.date), date))
+                      .map(event => (
+                        <EventCard key={event.id} event={event} />
+                      ))}
+                    
+                    {!eventsMock.some(event => isSameDay(parseISO(event.date), date)) && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>No events scheduled for today</p>
+                        <Button variant="outline" className="mt-2">
+                          <Plus size={16} className="mr-1" />
+                          Add Event
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
         
