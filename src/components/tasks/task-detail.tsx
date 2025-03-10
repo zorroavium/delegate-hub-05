@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { 
   Calendar, 
@@ -12,7 +12,9 @@ import {
   ArrowLeft,
   Edit,
   Trash,
-  ExternalLink
+  ExternalLink,
+  Save,
+  X
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -20,14 +22,19 @@ import { Separator } from '@/components/ui/separator';
 import { CustomButton } from '../ui/custom-button';
 import { useNavigate } from 'react-router-dom';
 import { Task } from '../dashboard/kanban-board';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/use-toast';
 
 interface TaskDetailProps {
   task: Task;
   className?: string;
 }
 
-export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
+export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, className }) => {
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [task, setTask] = useState<Task>(initialTask);
+  const [editedTask, setEditedTask] = useState<Task>(initialTask);
 
   // Format date string
   const formatDate = (dateString: string) => {
@@ -87,6 +94,37 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
     return dueDate < today && task.status !== 'completed';
   };
 
+  const handleSaveEdit = () => {
+    // In a real app, this would save to a backend
+    setTask(editedTask);
+    setIsEditing(false);
+    toast({
+      title: "Task updated",
+      description: "The task has been successfully updated.",
+    });
+  };
+  
+  const handleCancelEdit = () => {
+    setEditedTask(task);
+    setIsEditing(false);
+  };
+
+  const handleTaskChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setEditedTask(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setEditedTask(prev => ({
+      ...prev,
+      progress: value,
+    }));
+  };
+
   const statusInfo = getStatusInfo();
 
   return (
@@ -104,17 +142,45 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
         </CustomButton>
         <h1 className="text-2xl font-bold flex-1">Task Details</h1>
         <div className="flex gap-2">
-          <CustomButton variant="outline" size="sm" icon={<Edit size={16} />}>
-            Edit
-          </CustomButton>
-          <CustomButton 
-            variant="outline" 
-            size="sm" 
-            icon={<Trash size={16} />}
-            className="text-status-delayed"
-          >
-            Delete
-          </CustomButton>
+          {isEditing ? (
+            <>
+              <CustomButton 
+                variant="outline" 
+                size="sm" 
+                icon={<X size={16} />}
+                onClick={handleCancelEdit}
+              >
+                Cancel
+              </CustomButton>
+              <CustomButton 
+                variant="primary" 
+                size="sm" 
+                icon={<Save size={16} />}
+                onClick={handleSaveEdit}
+              >
+                Save
+              </CustomButton>
+            </>
+          ) : (
+            <>
+              <CustomButton 
+                variant="outline" 
+                size="sm" 
+                icon={<Edit size={16} />}
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </CustomButton>
+              <CustomButton 
+                variant="outline" 
+                size="sm" 
+                icon={<Trash size={16} />}
+                className="text-status-delayed"
+              >
+                Delete
+              </CustomButton>
+            </>
+          )}
         </div>
       </div>
 
@@ -125,28 +191,72 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
           {/* Task title and status */}
           <div className="glass-card p-6">
             <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-bold">{task.title}</h2>
+              {isEditing ? (
+                <Input 
+                  name="title"
+                  value={editedTask.title}
+                  onChange={handleTaskChange}
+                  className="text-xl font-bold"
+                />
+              ) : (
+                <h2 className="text-xl font-bold">{task.title}</h2>
+              )}
               <div className="flex items-center">
-                <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusInfo.color)} />
-                <span className="text-sm font-medium">{statusInfo.text}</span>
+                {isEditing ? (
+                  <select 
+                    name="status"
+                    value={editedTask.status}
+                    onChange={handleTaskChange}
+                    className="text-sm font-medium rounded-md border border-input bg-transparent px-3 py-1"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="delayed">Delayed</option>
+                  </select>
+                ) : (
+                  <>
+                    <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusInfo.color)} />
+                    <span className="text-sm font-medium">{statusInfo.text}</span>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Description */}
-            <p className="text-muted-foreground mb-6">{task.description}</p>
+            {isEditing ? (
+              <textarea
+                name="description"
+                value={editedTask.description}
+                onChange={handleTaskChange}
+                className="w-full min-h-[100px] text-muted-foreground rounded-md border border-input p-3 mb-6"
+              />
+            ) : (
+              <p className="text-muted-foreground mb-6">{task.description}</p>
+            )}
 
             {/* Due date */}
             <div className="flex items-center mb-4">
               <Calendar size={18} className="text-primary mr-2" />
               <div className="flex flex-col">
                 <span className="text-sm font-medium">Due Date</span>
-                <span className={cn(
-                  'text-sm',
-                  isPastDue() && 'text-status-delayed font-medium flex items-center gap-1'
-                )}>
-                  {formatDate(task.dueDate)}
-                  {isPastDue() && <AlertTriangle size={12} />}
-                </span>
+                {isEditing ? (
+                  <Input
+                    type="date"
+                    name="dueDate"
+                    value={editedTask.dueDate}
+                    onChange={handleTaskChange}
+                    className="text-sm mt-1 w-40"
+                  />
+                ) : (
+                  <span className={cn(
+                    'text-sm',
+                    isPastDue() && 'text-status-delayed font-medium flex items-center gap-1'
+                  )}>
+                    {formatDate(task.dueDate)}
+                    {isPastDue() && <AlertTriangle size={12} />}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -155,12 +265,25 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
               <AlertTriangle size={18} className="text-primary mr-2" />
               <div className="flex flex-col">
                 <span className="text-sm font-medium">Priority</span>
-                <span className={cn(
-                  'text-xs px-2 py-0.5 rounded-full font-medium w-fit mt-1',
-                  getPriorityClass()
-                )}>
-                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                </span>
+                {isEditing ? (
+                  <select
+                    name="priority"
+                    value={editedTask.priority}
+                    onChange={handleTaskChange}
+                    className="text-sm mt-1 rounded-md border border-input bg-transparent px-3 py-1 w-40"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                ) : (
+                  <span className={cn(
+                    'text-xs px-2 py-0.5 rounded-full font-medium w-fit mt-1',
+                    getPriorityClass()
+                  )}>
+                    {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -168,9 +291,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Progress</span>
-                <span className="text-sm font-medium">{task.progress}%</span>
+                <span className="text-sm font-medium">{isEditing ? editedTask.progress : task.progress}%</span>
               </div>
-              <Progress value={task.progress} className="h-2" />
+              {isEditing ? (
+                <Input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={editedTask.progress}
+                  onChange={handleProgressChange}
+                  className="w-full"
+                />
+              ) : (
+                <Progress value={task.progress} className="h-2" />
+              )}
             </div>
           </div>
           
@@ -354,3 +488,4 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task, className }) => {
     </div>
   );
 };
+
