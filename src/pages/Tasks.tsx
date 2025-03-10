@@ -184,13 +184,32 @@ const TasksPage = () => {
   const [filter, setFilter] = useState('all');
   const [tasks, setTasks] = useState(tasksMock);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
+  const [showThisWeek, setShowThisWeek] = useState(false);
   const { toast } = useToast();
   
-  // Filter tasks based on status and search query
+  // Filter tasks based on status, priority, time frame, and search query
   const filteredTasks = tasks.filter(task => {
     // Apply tab filter
     if (filter !== 'all' && task.status !== filter) {
       return false;
+    }
+    
+    // Apply priority filter
+    if (selectedPriority && task.priority !== selectedPriority) {
+      return false;
+    }
+    
+    // Apply due this week filter
+    if (showThisWeek) {
+      const taskDate = new Date(task.dueDate);
+      const today = new Date();
+      const weekFromNow = new Date();
+      weekFromNow.setDate(today.getDate() + 7);
+      
+      if (taskDate < today || taskDate > weekFromNow) {
+        return false;
+      }
     }
     
     // Apply search query
@@ -208,6 +227,20 @@ const TasksPage = () => {
       title: "Task Created",
       description: `"${newTask.title}" has been created successfully.`
     });
+  };
+
+  // Handle filter changes
+  const handlePriorityFilter = (priority: string) => {
+    setSelectedPriority(prev => prev === priority ? null : priority);
+  };
+
+  const handleWeekFilter = () => {
+    setShowThisWeek(prev => !prev);
+  };
+
+  const clearFilters = () => {
+    setSelectedPriority(null);
+    setShowThisWeek(false);
   };
   
   return (
@@ -235,22 +268,30 @@ const TasksPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleWeekFilter}>
                   <Calendar size={16} className="mr-2" />
-                  Due this week
+                  <span>Due this week</span>
+                  {showThisWeek && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePriorityFilter('high')}>
                   <AlertTriangle size={16} className="mr-2" />
-                  High priority
+                  <span>High priority</span>
+                  {selectedPriority === 'high' && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CheckCircle2 size={16} className="mr-2" />
-                  Completed
+                <DropdownMenuItem onClick={() => handlePriorityFilter('medium')}>
+                  <AlertTriangle size={16} className="mr-2" />
+                  <span>Medium priority</span>
+                  {selectedPriority === 'medium' && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePriorityFilter('low')}>
+                  <AlertTriangle size={16} className="mr-2" />
+                  <span>Low priority</span>
+                  {selectedPriority === 'low' && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={clearFilters}>
                   <SlidersHorizontal size={16} className="mr-2" />
-                  Advanced filters
+                  Clear filters
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

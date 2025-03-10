@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { TaskCard } from './task-card';
 import { Plus } from 'lucide-react';
 import { CustomButton } from '../ui/custom-button';
+import { CreateTaskDialog } from '../tasks/create-task-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 // Task type definition
 export interface Task {
@@ -116,8 +118,9 @@ interface KanbanBoardProps {
 }
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
+  const { toast } = useToast();
   // Sample data
-  const [tasks] = useState<Task[]>([
+  const [tasks, setTasks] = useState<Task[]>([
     {
       id: '1',
       title: 'Update website content',
@@ -198,42 +201,70 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
     },
   ]);
 
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newTaskStatus, setNewTaskStatus] = useState<Task['status']>('pending');
+
   // Group tasks by status
   const pendingTasks = tasks.filter(task => task.status === 'pending');
   const inProgressTasks = tasks.filter(task => task.status === 'in-progress');
   const completedTasks = tasks.filter(task => task.status === 'completed');
   const delayedTasks = tasks.filter(task => task.status === 'delayed');
 
-  const handleAddTask = () => {
-    console.log('Add new task');
-    // Would handle task creation in a real app
+  // Handle opening the task creation dialog with pre-selected status
+  const handleAddTask = (status: Task['status']) => {
+    setNewTaskStatus(status);
+    setIsCreateDialogOpen(true);
+  };
+
+  // Handle the task creation from dialog
+  const handleTaskCreated = (newTask: any) => {
+    // Override the status with the one selected when clicking the Add Task button
+    const taskWithStatus = {
+      ...newTask,
+      status: newTaskStatus
+    };
+    
+    setTasks(prevTasks => [taskWithStatus, ...prevTasks]);
+    toast({
+      title: "Task Created",
+      description: `"${newTask.title}" has been created successfully.`
+    });
   };
 
   return (
-    <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6', className)}>
-      <KanbanColumn 
-        title="Pending" 
-        tasks={pendingTasks} 
-        status="pending"
-        onAddTask={handleAddTask}
+    <>
+      <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6', className)}>
+        <KanbanColumn 
+          title="Pending" 
+          tasks={pendingTasks} 
+          status="pending"
+          onAddTask={() => handleAddTask('pending')}
+        />
+        <KanbanColumn 
+          title="In Progress" 
+          tasks={inProgressTasks} 
+          status="in-progress"
+          onAddTask={() => handleAddTask('in-progress')}
+        />
+        <KanbanColumn 
+          title="Completed" 
+          tasks={completedTasks} 
+          status="completed"
+        />
+        <KanbanColumn 
+          title="Delayed" 
+          tasks={delayedTasks} 
+          status="delayed"
+          onAddTask={() => handleAddTask('delayed')}
+        />
+      </div>
+      
+      {/* Task Creation Dialog */}
+      <CreateTaskDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onTaskCreated={handleTaskCreated}
       />
-      <KanbanColumn 
-        title="In Progress" 
-        tasks={inProgressTasks} 
-        status="in-progress"
-        onAddTask={handleAddTask}
-      />
-      <KanbanColumn 
-        title="Completed" 
-        tasks={completedTasks} 
-        status="completed"
-      />
-      <KanbanColumn 
-        title="Delayed" 
-        tasks={delayedTasks} 
-        status="delayed"
-        onAddTask={handleAddTask}
-      />
-    </div>
+    </>
   );
 };

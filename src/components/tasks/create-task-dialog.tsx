@@ -121,6 +121,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
       dueDate: format(new Date(), 'yyyy-MM-dd'),
       assigneeId: '101'
     });
+    setSelectedDate(new Date());
     onOpenChange(false);
   };
 
