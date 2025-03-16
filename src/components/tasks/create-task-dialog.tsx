@@ -30,7 +30,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [status, setStatus] = useState('pending');
   const [dueDate, setDueDate] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
+  const [assigneeId, setAssigneeId] = useState('unassigned');
 
   const resetForm = () => {
     setTitle('');
@@ -38,7 +38,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
     setPriority('medium');
     setStatus('pending');
     setDueDate('');
-    setAssigneeId('');
+    setAssigneeId('unassigned');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -166,7 +166,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                   <SelectValue placeholder="Assign to..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {employees.filter(emp => emp.status === 'active').map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.name}

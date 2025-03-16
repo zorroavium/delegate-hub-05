@@ -10,7 +10,8 @@ import {
   Settings, 
   Bell, 
   Menu,
-  X
+  X,
+  PanelLeft
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -119,6 +120,7 @@ const Sidebar = ({ className }: { className?: string }) => {
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const isMobile = useIsMobile();
   
   useEffect(() => {
@@ -127,12 +129,39 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isMobile]);
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
     <div className="min-h-screen flex w-full">
       {/* Sidebar for desktop */}
       {!isMobile && (
-        <div className="w-64 flex-shrink-0">
-          <Sidebar />
+        <div className={cn("transition-all duration-300", 
+          isSidebarCollapsed ? "w-16 flex-shrink-0" : "w-64 flex-shrink-0")}>
+          {isSidebarCollapsed ? (
+            <div className="h-screen flex flex-col bg-card/80 border-r w-full items-center py-4">
+              <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-6">P</div>
+              <div className="flex-1">
+                <nav className="grid gap-2">
+                  {sidebarOptions.map((option) => (
+                    <Button
+                      key={option.path}
+                      variant={location.pathname === option.path ? 'secondary' : 'ghost'}
+                      size="icon"
+                      className="h-10 w-10"
+                      onClick={() => navigate(option.path)}
+                    >
+                      <span>{option.icon}</span>
+                      <span className="sr-only">{option.label}</span>
+                    </Button>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          ) : (
+            <Sidebar />
+          )}
         </div>
       )}
       
@@ -151,6 +180,20 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       
       {/* Content */}
       <div className="flex-1 flex flex-col w-full">
+        {/* Desktop header with collapse button */}
+        {!isMobile && (
+          <div className="h-14 flex items-center px-4 border-b w-full">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={toggleSidebar}
+              className="mr-4"
+            >
+              <PanelLeft />
+            </Button>
+          </div>
+        )}
+        
         {/* Mobile header */}
         {isMobile && (
           <div className="h-14 flex items-center px-4 border-b w-full">

@@ -68,6 +68,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           <button 
             onClick={onAddTask}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            type="button"
           >
             <Plus size={18} />
           </button>
@@ -116,6 +117,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
             icon={<Plus size={16} />}
             onClick={onAddTask}
             className="text-gray-500 justify-center"
+            type="button"
           >
             Add Task
           </CustomButton>
