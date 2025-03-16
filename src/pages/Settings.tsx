@@ -4,6 +4,8 @@ import { SidebarLayout } from '@/components/layout/sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TaskStatusSettings } from '@/components/settings/task-status-settings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmployeeManagement } from '@/components/settings/employee-management';
+import { ThemeSettings } from '@/components/settings/theme-settings';
 
 const Settings = () => {
   return (
@@ -17,12 +19,14 @@ const Settings = () => {
         <Tabs defaultValue="general" className="w-full">
           <TabsList>
             <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="employees">Employees</TabsTrigger>
             <TabsTrigger value="workflow">Workflow</TabsTrigger>
             <TabsTrigger value="team">Team</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
           
           <TabsContent value="general" className="mt-6 space-y-6">
+            <ThemeSettings />
             <Card>
               <CardHeader>
                 <CardTitle>General Settings</CardTitle>
@@ -34,6 +38,10 @@ const Settings = () => {
                 <p className="text-muted-foreground">General settings will appear here.</p>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="employees" className="mt-6 space-y-6">
+            <EmployeeManagement />
           </TabsContent>
           
           <TabsContent value="workflow" className="mt-6 space-y-6">

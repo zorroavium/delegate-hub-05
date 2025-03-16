@@ -1,35 +1,14 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-
-// Mock function to generate a unique ID - in a real app, this would be handled by the backend
-const generateId = () => {
-  return Math.random().toString(36).substr(2, 9);
-};
-
-export interface TaskFormValues {
-  title: string;
-  description: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  dueDate: string;
-  assigneeId: string;
-}
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useStatusStore } from '@/store/useStatusStore';
+import { useEmployeeStore } from '@/store/useEmployeeStore';
+import { useToast } from '@/hooks/use-toast';
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -37,91 +16,67 @@ interface CreateTaskDialogProps {
   onTaskCreated: (task: any) => void;
 }
 
-export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
-  open,
+export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ 
+  open, 
   onOpenChange,
   onTaskCreated
 }) => {
   const { toast } = useToast();
-  const [formValues, setFormValues] = useState<TaskFormValues>({
-    title: '',
-    description: '',
-    status: 'pending',
-    priority: 'medium',
-    dueDate: format(new Date(), 'yyyy-MM-dd'),
-    assigneeId: '101'
-  });
+  const { statuses } = useStatusStore();
+  const { employees } = useEmployeeStore();
   
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [status, setStatus] = useState('pending');
+  const [dueDate, setDueDate] = useState('');
+  const [assigneeId, setAssigneeId] = useState('');
 
-  // Mock data for assignees - in a real app, this would be fetched from the backend
-  const assignees = [
-    { id: '101', name: 'Sarah Johnson', avatar: 'SJ', color: 'bg-blue-500' },
-    { id: '102', name: 'Mike Anderson', avatar: 'MA', color: 'bg-green-500' },
-    { id: '103', name: 'Emily Chen', avatar: 'EC', color: 'bg-purple-500' },
-    { id: '104', name: 'Alex Thompson', avatar: 'AT', color: 'bg-yellow-500' }
-  ];
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormValues(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string) => (value: string) => {
-    setFormValues(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleDateChange = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      setFormValues(prev => ({ ...prev, dueDate: format(date, 'yyyy-MM-dd') }));
-    }
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPriority('medium');
+    setStatus('pending');
+    setDueDate('');
+    setAssigneeId('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
-    if (!formValues.title.trim()) {
+    if (!title.trim()) {
       toast({
         title: "Error",
-        description: "Title is required",
+        description: "Task title is required",
         variant: "destructive"
       });
       return;
     }
 
-    // Create the new task object
-    const newTask = {
-      id: generateId(),
-      title: formValues.title,
-      description: formValues.description,
-      status: formValues.status,
-      priority: formValues.priority,
-      dueDate: formValues.dueDate,
-      progress: formValues.status === 'completed' ? 100 : formValues.status === 'in-progress' ? 50 : 0,
-      assignee: assignees.find(a => a.id === formValues.assigneeId)
+    const selectedAssignee = employees.find(emp => emp.id === assigneeId);
+    const assignee = selectedAssignee ? {
+      id: selectedAssignee.id,
+      name: selectedAssignee.name,
+      avatar: selectedAssignee.avatar
+    } : {
+      id: '0',
+      name: 'Unassigned',
+      avatar: 'UN'
     };
 
-    // Pass the new task to the parent component
+    const newTask = {
+      id: crypto.randomUUID(),
+      title,
+      description,
+      priority,
+      status,
+      dueDate: dueDate || new Date().toISOString().split('T')[0],
+      progress: 0,
+      assignee
+    };
+    
     onTaskCreated(newTask);
-    
-    // Show success toast
-    toast({
-      title: "Success",
-      description: "Task created successfully"
-    });
-    
-    // Reset form and close dialog
-    setFormValues({
-      title: '',
-      description: '',
-      status: 'pending',
-      priority: 'medium',
-      dueDate: format(new Date(), 'yyyy-MM-dd'),
-      assigneeId: '101'
-    });
-    setSelectedDate(new Date());
+    resetForm();
     onOpenChange(false);
   };
 
@@ -130,55 +85,56 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
+          <DialogDescription>
+            Add a new task to your project. Fill in the details below.
+          </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
-            <label htmlFor="title" className="text-sm font-medium">Title</label>
-            <Input
-              id="title"
-              name="title"
-              value={formValues.title}
-              onChange={handleInputChange}
-              placeholder="Enter task title"
+            <Label htmlFor="title">Title</Label>
+            <Input 
+              id="title" 
+              placeholder="Enter task title" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              required
             />
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">Description</label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formValues.description}
-              onChange={handleInputChange}
-              placeholder="Enter task description"
-              rows={3}
+            <Label htmlFor="description">Description</Label>
+            <Textarea 
+              id="description" 
+              placeholder="Describe the task..." 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              rows={3} 
             />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="status" className="text-sm font-medium">Status</label>
-              <Select 
-                value={formValues.status} 
-                onValueChange={handleSelectChange('status')}
-              >
+              <Label htmlFor="status">Status</Label>
+              <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  {statuses.sort((a, b) => a.order - b.order).map((status) => (
+                    <SelectItem key={status.id} value={status.id}>
+                      {status.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="priority" className="text-sm font-medium">Priority</label>
+              <Label htmlFor="priority">Priority</Label>
               <Select 
-                value={formValues.priority} 
-                onValueChange={handleSelectChange('priority')}
+                value={priority} 
+                onValueChange={(val) => setPriority(val as 'low' | 'medium' | 'high')}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
@@ -194,41 +150,26 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="dueDate" className="text-sm font-medium">Due Date</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(selectedDate, 'PPP')}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={handleDateChange}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <Label htmlFor="dueDate">Due Date</Label>
+              <Input 
+                id="dueDate" 
+                type="date" 
+                value={dueDate} 
+                onChange={(e) => setDueDate(e.target.value)} 
+              />
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="assignee" className="text-sm font-medium">Assignee</label>
-              <Select 
-                value={formValues.assigneeId} 
-                onValueChange={handleSelectChange('assigneeId')}
-              >
+              <Label htmlFor="assignee">Assignee</Label>
+              <Select value={assigneeId} onValueChange={setAssigneeId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select assignee" />
+                  <SelectValue placeholder="Assign to..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignees.map((assignee) => (
-                    <SelectItem key={assignee.id} value={assignee.id}>
-                      {assignee.name}
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {employees.filter(emp => emp.status === 'active').map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -236,7 +177,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             </div>
           </div>
           
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

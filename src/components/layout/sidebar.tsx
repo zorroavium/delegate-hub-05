@@ -1,211 +1,179 @@
 
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   CheckSquare, 
-  BarChart3, 
   Users, 
-  Bell, 
+  Calendar as CalendarIcon, 
+  BarChart3, 
   Settings, 
-  Calendar,
-  LogOut,
+  Bell, 
   Menu,
-  X,
-  ChevronRight
+  X
 } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
+import { useMobile } from '@/hooks/use-mobile';
+import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
-interface SidebarItemProps {
-  icon: React.ReactNode;
+interface SidebarOption {
+  path: string;
   label: string;
-  to: string;
-  isActive: boolean;
-  isCollapsed: boolean;
-  onClick?: () => void;
+  icon: React.ReactNode;
 }
 
-const SidebarItem = ({ icon, label, to, isActive, isCollapsed, onClick }: SidebarItemProps) => (
-  <Link
-    to={to}
-    className={cn(
-      'flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-300 ease-in-out',
-      isActive 
-        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground',
-      isCollapsed ? 'justify-center' : ''
-    )}
-    onClick={onClick}
-  >
-    <div className={cn(
-      'flex items-center justify-center w-6 h-6',
-      isActive && 'animate-pulse-soft'
-    )}>
-      {icon}
-    </div>
-    {!isCollapsed && (
-      <span className="transition-opacity duration-300">{label}</span>
-    )}
-  </Link>
-);
+const sidebarOptions: SidebarOption[] = [
+  {
+    path: '/',
+    label: 'Dashboard',
+    icon: <LayoutDashboard size={20} />,
+  },
+  {
+    path: '/tasks',
+    label: 'Tasks',
+    icon: <CheckSquare size={20} />,
+  },
+  {
+    path: '/employees',
+    label: 'Employees',
+    icon: <Users size={20} />,
+  },
+  {
+    path: '/calendar',
+    label: 'Calendar',
+    icon: <CalendarIcon size={20} />,
+  },
+  {
+    path: '/reports',
+    label: 'Reports',
+    icon: <BarChart3 size={20} />,
+  },
+  {
+    path: '/settings',
+    label: 'Settings',
+    icon: <Settings size={20} />,
+  },
+  {
+    path: '/notifications',
+    label: 'Notifications',
+    icon: <Bell size={20} />,
+  },
+];
 
-interface SidebarProps {
-  className?: string;
-}
-
-export const Sidebar = ({ className }: SidebarProps) => {
+const Sidebar = ({ className }: { className?: string }) => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
-  const toggleMobileSidebar = () => {
-    setIsMobileOpen(!isMobileOpen);
-  };
-
-  const closeMobileSidebar = () => {
-    if (isMobile) {
-      setIsMobileOpen(false);
-    }
-  };
-
-  const navItems = [
-    { icon: <LayoutDashboard size={20} />, label: 'Dashboard', to: '/' },
-    { icon: <CheckSquare size={20} />, label: 'Tasks', to: '/tasks' },
-    { icon: <Calendar size={20} />, label: 'Calendar', to: '/calendar' },
-    { icon: <Users size={20} />, label: 'Employees', to: '/employees' },
-    { icon: <BarChart3 size={20} />, label: 'Reports', to: '/reports' },
-    { icon: <Bell size={20} />, label: 'Notifications', to: '/notifications' },
-    { icon: <Settings size={20} />, label: 'Settings', to: '/settings' },
-  ];
-
-  // Mobile menu button
-  const MobileMenuButton = () => (
-    <button
-      onClick={toggleMobileSidebar}
-      className="fixed top-4 left-4 z-50 p-2 rounded-full bg-primary text-white shadow-md"
-      aria-label="Toggle menu"
-    >
-      {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
-    </button>
-  );
-
-  // Collapse button
-  const CollapseButton = () => (
-    <button
-      onClick={toggleSidebar}
-      className={cn(
-        'absolute -right-3 top-20 p-1.5 rounded-full bg-sidebar-primary text-sidebar-primary-foreground shadow-md transition-transform duration-300',
-        isCollapsed && 'rotate-180'
-      )}
-      aria-label="Collapse sidebar"
-    >
-      <ChevronRight size={16} />
-    </button>
-  );
-
-  return (
-    <>
-      {isMobile && <MobileMenuButton />}
-      
-      <div
-        className={cn(
-          'fixed inset-0 bg-black/50 z-40 transition-opacity duration-300',
-          isMobile ? (isMobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none') : 'hidden'
-        )}
-        onClick={closeMobileSidebar}
-      />
-
-      <aside
-        className={cn(
-          'h-screen bg-sidebar flex flex-col border-r shadow-lg transition-all duration-300 ease-in-out relative z-40',
-          isCollapsed ? 'w-[80px]' : 'w-[240px]',
-          isMobile && (isMobileOpen ? 'translate-x-0' : '-translate-x-full'),
-          'fixed left-0 top-0',
-          className
-        )}
-      >
-        {!isMobile && <CollapseButton />}
-        
-        {/* Logo & App Name */}
-        <div className={cn(
-          'py-6 flex items-center justify-center border-b transition-all duration-300',
-          !isCollapsed && 'justify-start px-6'
-        )}>
-          <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-            <LayoutDashboard className="text-primary" />
-          </div>
-          {!isCollapsed && (
-            <span className="ml-3 font-bold text-xl text-sidebar-foreground">Delegate</span>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {navItems.map((item) => (
-            <SidebarItem
-              key={item.to}
-              icon={item.icon}
-              label={item.label}
-              to={item.to}
-              isActive={location.pathname === item.to}
-              isCollapsed={isCollapsed}
-              onClick={closeMobileSidebar}
-            />
-          ))}
-        </nav>
-
-        {/* User profile */}
-        <div className={cn(
-          'p-3 border-t flex items-center',
-          isCollapsed ? 'justify-center' : 'px-4'
-        )}>
-          <Avatar className="h-9 w-9 border-2 border-sidebar-accent">
-            <div className="bg-sidebar-accent text-sidebar-accent-foreground flex items-center justify-center w-full h-full text-sm font-medium">
-              JD
-            </div>
-          </Avatar>
-          
-          {!isCollapsed && (
-            <div className="ml-3 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">John Doe</p>
-              <p className="text-xs text-sidebar-foreground/70 truncate">Manager</p>
-            </div>
-          )}
-
-          {!isCollapsed && (
-            <button className="ml-auto text-sidebar-foreground/80 hover:text-sidebar-foreground">
-              <LogOut size={18} />
-            </button>
-          )}
-        </div>
-      </aside>
-    </>
-  );
-};
-
-export const SidebarLayout = ({ children }: { children: React.ReactNode }) => {
-  const isMobile = useIsMobile();
   
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main 
-        className={cn(
-          "flex-1 transition-all duration-300 ease-in-out",
-          isMobile ? "ml-0" : "ml-[240px]"
-        )}
-      >
-        <div className="container mx-auto p-4 md:p-6">
-          {children}
+    <div className={cn('h-screen flex flex-col bg-card/80 border-r', className)}>
+      <div className="p-4">
+        <div className="flex items-center">
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">P</div>
+          <h1 className="text-xl font-bold ml-2">ProjectHub</h1>
         </div>
-      </main>
+      </div>
+      
+      <div className="flex-1 overflow-auto px-2 py-2">
+        <nav className="grid gap-1">
+          {sidebarOptions.map((option) => (
+            <Button
+              key={option.path}
+              variant={location.pathname === option.path ? 'secondary' : 'ghost'}
+              className={cn(
+                'justify-start h-11',
+                location.pathname === option.path ? 'bg-secondary font-medium text-secondary-foreground' : ''
+              )}
+              onClick={() => navigate(option.path)}
+            >
+              <span className="w-5 mr-3">{option.icon}</span>
+              {option.label}
+            </Button>
+          ))}
+        </nav>
+      </div>
+      
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+          </div>
+        </div>
+        <Separator className="my-3" />
+        <div className="flex items-center">
+          <Avatar className="h-9 w-9">
+            <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-lg font-medium">A</div>
+          </Avatar>
+          <div className="ml-2">
+            <p className="text-sm font-medium">Admin User</p>
+            <p className="text-xs text-muted-foreground">admin@example.com</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
+
+export function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useMobile();
+  
+  useEffect(() => {
+    if (!isMobile) {
+      setIsOpen(false);
+    }
+  }, [isMobile]);
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Sidebar for desktop */}
+      {!isMobile && (
+        <div className="w-64 hidden md:block">
+          <Sidebar />
+        </div>
+      )}
+      
+      {/* Mobile sidebar (overlay) */}
+      {isMobile && isOpen && (
+        <div className="fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm" 
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="relative z-10 w-64 h-full">
+            <Sidebar />
+          </div>
+        </div>
+      )}
+      
+      {/* Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Mobile header */}
+        {isMobile && (
+          <div className="h-14 flex items-center px-4 border-b">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden" 
+              onClick={() => setIsOpen(true)}
+            >
+              <Menu />
+            </Button>
+            <div className="flex items-center ml-3">
+              <div className="w-6 h-6 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">P</div>
+              <h1 className="text-lg font-bold ml-1">ProjectHub</h1>
+            </div>
+          </div>
+        )}
+        
+        {/* Main content */}
+        <main className="flex-1 overflow-auto p-4 md:p-8 pb-16">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}

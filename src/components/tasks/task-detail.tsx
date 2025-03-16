@@ -14,7 +14,8 @@ import {
   Trash,
   ExternalLink,
   Save,
-  X
+  X,
+  User
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -23,7 +24,10 @@ import { CustomButton } from '../ui/custom-button';
 import { useNavigate } from 'react-router-dom';
 import { Task } from '../dashboard/kanban-board';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useStatusStore } from '@/store/useStatusStore';
+import { useEmployeeStore } from '@/store/useEmployeeStore';
 
 interface TaskDetailProps {
   task: Task;
@@ -32,6 +36,10 @@ interface TaskDetailProps {
 
 export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, className }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { statuses } = useStatusStore();
+  const { employees } = useEmployeeStore();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [task, setTask] = useState<Task>(initialTask);
   const [editedTask, setEditedTask] = useState<Task>(initialTask);
@@ -58,6 +66,15 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
 
   // Get status class and info
   const getStatusInfo = () => {
+    const status = statuses.find(s => s.id === task.status);
+    
+    if (status) {
+      return {
+        color: status.color,
+        text: status.name,
+      };
+    }
+    
     switch (task.status) {
       case 'pending':
         return {
@@ -98,9 +115,12 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     // In a real app, this would save to a backend
     setTask(editedTask);
     setIsEditing(false);
+    
+    const statusName = statuses.find(s => s.id === editedTask.status)?.name || editedTask.status;
+    
     toast({
       title: "Task updated",
-      description: "The task has been successfully updated.",
+      description: `The task has been updated to ${statusName} with ${editedTask.progress}% progress.`,
     });
   };
   
@@ -123,6 +143,27 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
       ...prev,
       progress: value,
     }));
+  };
+
+  const handleStatusChange = (value: string) => {
+    setEditedTask(prev => {
+      // If marking as completed, set progress to 100%
+      if (value === 'completed') {
+        return { ...prev, status: value, progress: 100 };
+      }
+      return { ...prev, status: value };
+    });
+  };
+
+  const handleQuickComplete = () => {
+    const updatedTask = { ...task, status: 'completed', progress: 100 };
+    setTask(updatedTask);
+    setEditedTask(updatedTask);
+    
+    toast({
+      title: "Task completed",
+      description: "The task has been marked as completed.",
+    });
   };
 
   const statusInfo = getStatusInfo();
@@ -203,17 +244,22 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               )}
               <div className="flex items-center">
                 {isEditing ? (
-                  <select 
+                  <Select 
                     name="status"
                     value={editedTask.status}
-                    onChange={handleTaskChange}
-                    className="text-sm font-medium rounded-md border border-input bg-transparent px-3 py-1"
+                    onValueChange={handleStatusChange}
                   >
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                    <option value="delayed">Delayed</option>
-                  </select>
+                    <SelectTrigger className="text-sm font-medium rounded-md w-[150px]">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statuses.map(status => (
+                        <SelectItem key={status.id} value={status.id}>
+                          {status.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <>
                     <div className={cn('w-2.5 h-2.5 rounded-full mr-2', statusInfo.color)} />
@@ -266,16 +312,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               <div className="flex flex-col">
                 <span className="text-sm font-medium">Priority</span>
                 {isEditing ? (
-                  <select
-                    name="priority"
+                  <Select 
                     value={editedTask.priority}
-                    onChange={handleTaskChange}
-                    className="text-sm mt-1 rounded-md border border-input bg-transparent px-3 py-1 w-40"
+                    onValueChange={(value) => setEditedTask({...editedTask, priority: value as 'low' | 'medium' | 'high'})}
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+                    <SelectTrigger className="text-sm mt-1 w-40">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <span className={cn(
                     'text-xs px-2 py-0.5 rounded-full font-medium w-fit mt-1',
@@ -402,17 +451,47 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
           {/* Assignee */}
           <div className="glass-card p-6">
             <h3 className="font-semibold mb-4">Assignee</h3>
-            <div className="flex items-center">
-              <Avatar className="h-10 w-10 border border-border">
-                <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-sm font-medium">
-                  {task.assignee.name.split(' ').map(n => n[0]).join('')}
+            {isEditing ? (
+              <Select 
+                value={task.assignee.id}
+                onValueChange={(value) => {
+                  const selectedEmployee = employees.find(emp => emp.id === value);
+                  if (selectedEmployee) {
+                    setEditedTask({
+                      ...editedTask, 
+                      assignee: {
+                        id: selectedEmployee.id,
+                        name: selectedEmployee.name,
+                        avatar: selectedEmployee.avatar
+                      }
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full mb-2">
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.filter(emp => emp.status === 'active').map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center">
+                <Avatar className="h-10 w-10 border border-border">
+                  <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-sm font-medium">
+                    {task.assignee.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                </Avatar>
+                <div className="ml-3">
+                  <div className="font-medium">{task.assignee.name}</div>
+                  <div className="text-sm text-muted-foreground">Developer</div>
                 </div>
-              </Avatar>
-              <div className="ml-3">
-                <div className="font-medium">{task.assignee.name}</div>
-                <div className="text-sm text-muted-foreground">Developer</div>
               </div>
-            </div>
+            )}
           </div>
           
           {/* Quick actions */}
@@ -423,6 +502,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                 fullWidth 
                 variant="success" 
                 icon={<CheckCircle2 size={16} />}
+                onClick={handleQuickComplete}
+                disabled={task.status === 'completed'}
               >
                 Mark as Completed
               </CustomButton>
@@ -436,9 +517,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               <CustomButton 
                 fullWidth 
                 variant="outline" 
-                icon={<ExternalLink size={16} />}
+                icon={<User size={16} />}
               >
-                Open Linked Resources
+                Reassign Task
               </CustomButton>
             </div>
           </div>
@@ -488,4 +569,3 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     </div>
   );
 };
-

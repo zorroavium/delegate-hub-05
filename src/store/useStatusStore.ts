@@ -9,13 +9,17 @@ export interface StatusConfig {
   order: number;
 }
 
+export type ThemeType = 'light' | 'dark' | 'system';
+
 interface StatusState {
   statuses: StatusConfig[];
+  theme: ThemeType;
   setStatuses: (statuses: StatusConfig[]) => void;
   addStatus: (status: Omit<StatusConfig, 'id' | 'order'>) => void;
   updateStatus: (id: string, status: Partial<Omit<StatusConfig, 'id'>>) => void;
   removeStatus: (id: string) => void;
   reorderStatuses: (startIndex: number, endIndex: number) => void;
+  setTheme: (theme: ThemeType) => void;
 }
 
 // Default statuses
@@ -30,6 +34,7 @@ export const useStatusStore = create<StatusState>()(
   persist(
     (set) => ({
       statuses: defaultStatuses,
+      theme: 'system',
       
       setStatuses: (statuses: StatusConfig[]) => set({ statuses }),
       
@@ -73,6 +78,8 @@ export const useStatusStore = create<StatusState>()(
           })),
         };
       }),
+
+      setTheme: (theme) => set({ theme }),
     }),
     {
       name: 'task-status-store',
