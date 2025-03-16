@@ -1,18 +1,20 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { TaskCard } from './task-card';
 import { Plus } from 'lucide-react';
 import { CustomButton } from '../ui/custom-button';
 import { CreateTaskDialog } from '../tasks/create-task-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useStatusStore } from '@/store/useStatusStore';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 // Task type definition
 export interface Task {
   id: string;
   title: string;
   description: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'delayed';
+  status: string;
   priority: 'low' | 'medium' | 'high';
   dueDate: string;
   progress: number;
@@ -26,25 +28,24 @@ export interface Task {
 interface KanbanColumnProps {
   title: string;
   tasks: Task[];
-  status: Task['status'];
+  status: string;
+  statusColor: string;
   onAddTask?: () => void;
+  droppableId: string;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, status, onAddTask }) => {
-  // Get status color
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ 
+  title, 
+  tasks, 
+  status, 
+  statusColor, 
+  onAddTask,
+  droppableId
+}) => {
+  // Get status color class from statusColor prop
   const getStatusColor = () => {
-    switch (status) {
-      case 'pending':
-        return 'border-status-pending/30 bg-status-pending/5';
-      case 'in-progress':
-        return 'border-status-in-progress/30 bg-status-in-progress/5';
-      case 'completed':
-        return 'border-status-completed/30 bg-status-completed/5';
-      case 'delayed':
-        return 'border-status-delayed/30 bg-status-delayed/5';
-      default:
-        return 'border-gray-200 bg-gray-50';
-    }
+    const baseColor = statusColor.replace('bg-', '');
+    return `border-${baseColor}/30 bg-${baseColor}/5`;
   };
 
   return (
@@ -57,15 +58,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, status, onAdd
       {/* Column header */}
       <div className="p-3 font-medium border-b flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div 
-            className={cn(
-              "w-2.5 h-2.5 rounded-full",
-              status === 'pending' && "bg-status-pending",
-              status === 'in-progress' && "bg-status-in-progress",
-              status === 'completed' && "bg-status-completed",
-              status === 'delayed' && "bg-status-delayed",
-            )}
-          />
+          <div className={cn("w-2.5 h-2.5 rounded-full", statusColor)} />
           <span>{title}</span>
           <span className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-normal rounded-full px-2">
             {tasks.length}
@@ -81,18 +74,37 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, status, onAdd
         )}
       </div>
       
-      {/* Tasks */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[400px]">
-        {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
-        ))}
-        
-        {tasks.length === 0 && (
-          <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-            <p className="text-center">No tasks</p>
+      {/* Tasks - Droppable container */}
+      <Droppable droppableId={droppableId}>
+        {(provided) => (
+          <div 
+            className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[400px]"
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+          >
+            {tasks.map((task, index) => (
+              <Draggable key={task.id} draggableId={task.id} index={index}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    <TaskCard task={task} />
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+            
+            {tasks.length === 0 && (
+              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                <p className="text-center">No tasks</p>
+              </div>
+            )}
           </div>
         )}
-      </div>
+      </Droppable>
       
       {/* Add task button at bottom */}
       {onAddTask && (
@@ -119,6 +131,8 @@ interface KanbanBoardProps {
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
   const { toast } = useToast();
+  const { statuses } = useStatusStore();
+  
   // Sample data
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -202,16 +216,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
   ]);
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newTaskStatus, setNewTaskStatus] = useState<Task['status']>('pending');
+  const [newTaskStatus, setNewTaskStatus] = useState<string>('pending');
+
+  // Sort statuses by order
+  const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
 
   // Group tasks by status
-  const pendingTasks = tasks.filter(task => task.status === 'pending');
-  const inProgressTasks = tasks.filter(task => task.status === 'in-progress');
-  const completedTasks = tasks.filter(task => task.status === 'completed');
-  const delayedTasks = tasks.filter(task => task.status === 'delayed');
+  const getTasksByStatus = (statusId: string) => {
+    return tasks.filter(task => task.status === statusId);
+  };
 
   // Handle opening the task creation dialog with pre-selected status
-  const handleAddTask = (status: Task['status']) => {
+  const handleAddTask = (status: string) => {
     setNewTaskStatus(status);
     setIsCreateDialogOpen(true);
   };
@@ -231,33 +247,58 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
     });
   };
 
+  // Handle drag and drop
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination } = result;
+    
+    // Dropped outside a droppable area
+    if (!destination) return;
+    
+    // Check if the task is being moved between columns or within the same column
+    if (source.droppableId !== destination.droppableId) {
+      // Moving between columns (change status)
+      const taskId = result.draggableId;
+      const newStatus = destination.droppableId;
+      
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
+      );
+      
+      // Show toast notification
+      const task = tasks.find(t => t.id === taskId);
+      const statusName = statuses.find(s => s.id === newStatus)?.name;
+      
+      if (task && statusName) {
+        toast({
+          title: `Task Status Updated`,
+          description: `"${task.title}" has been moved to ${statusName}`
+        });
+      }
+    } else if (source.index !== destination.index) {
+      // Reordering within same column - we could implement this if needed
+      // For now, we'll just leave the tasks in their current order
+    }
+  };
+
   return (
     <>
-      <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6', className)}>
-        <KanbanColumn 
-          title="Pending" 
-          tasks={pendingTasks} 
-          status="pending"
-          onAddTask={() => handleAddTask('pending')}
-        />
-        <KanbanColumn 
-          title="In Progress" 
-          tasks={inProgressTasks} 
-          status="in-progress"
-          onAddTask={() => handleAddTask('in-progress')}
-        />
-        <KanbanColumn 
-          title="Completed" 
-          tasks={completedTasks} 
-          status="completed"
-        />
-        <KanbanColumn 
-          title="Delayed" 
-          tasks={delayedTasks} 
-          status="delayed"
-          onAddTask={() => handleAddTask('delayed')}
-        />
-      </div>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6', className)}>
+          {sortedStatuses.map((status) => (
+            <KanbanColumn 
+              key={status.id}
+              title={status.name} 
+              tasks={getTasksByStatus(status.id)} 
+              status={status.id}
+              statusColor={status.color}
+              droppableId={status.id}
+              onAddTask={() => handleAddTask(status.id)}
+            />
+          ))}
+        </div>
+      </DragDropContext>
       
       {/* Task Creation Dialog */}
       <CreateTaskDialog
