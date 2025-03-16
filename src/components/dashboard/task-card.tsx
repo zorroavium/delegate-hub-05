@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { Calendar, Clock, MoreHorizontal, AlertTriangle } from 'lucide-react';
-import { type Task } from './kanban-board';
 import { Progress } from '@/components/ui/progress';
+import { Task } from '@/store/useTaskStore';
 
 interface TaskCardProps {
   task: Task;
@@ -110,7 +110,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
           </div>
 
           {/* Assignee */}
-          <Avatar className="h-6 w-6 border border-border">
+          <Avatar className="h-7 w-7 border border-border">
             <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
               {task.assignee.name.split(' ').map(n => n[0]).join('')}
             </div>

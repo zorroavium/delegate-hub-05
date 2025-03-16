@@ -1,27 +1,31 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { TaskDetail } from '@/components/tasks/task-detail';
 import { useParams } from 'react-router-dom';
+import { useTaskStore } from '@/store/useTaskStore';
 
 const TaskDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const { getTaskById } = useTaskStore();
+  const [task, setTask] = useState<any>(null);
+  
+  useEffect(() => {
+    if (id) {
+      const foundTask = getTaskById(id);
+      setTask(foundTask);
+    }
+  }, [id, getTaskById]);
 
-  // In a real app, fetch task data based on ID from an API
-  // For now, use mock data
-  const task = {
-    id: id || '1',
-    title: 'Update website content',
-    description: 'Update the company website with new product information and ensure all links are working correctly. Coordinate with the marketing team to get the latest product descriptions and images.',
-    status: 'in-progress' as const,
-    priority: 'high' as const,
-    dueDate: '2023-06-15',
-    progress: 60,
-    assignee: {
-      id: '101',
-      name: 'Sarah Johnson',
-    },
-  };
+  if (!task) {
+    return (
+      <SidebarLayout>
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">Loading task...</p>
+        </div>
+      </SidebarLayout>
+    );
+  }
 
   return (
     <SidebarLayout>

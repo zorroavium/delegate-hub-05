@@ -36,7 +36,7 @@ const Index = () => {
             title="Tasks Completed"
             value="28"
             description="This week"
-            icon={<CheckCircle2 size={22} />}
+            icon={<CheckCircle2 className="text-status-completed" size={22} />}
             change={12}
             changeText="vs last week"
           />
@@ -44,7 +44,7 @@ const Index = () => {
             title="Tasks Pending"
             value="17"
             description="Requiring attention"
-            icon={<AlertCircle size={22} />}
+            icon={<AlertCircle className="text-status-pending" size={22} />}
             change={-5}
             changeText="vs last week"
           />
@@ -52,7 +52,7 @@ const Index = () => {
             title="Active Team Members"
             value="24"
             description="Out of 30 total"
-            icon={<Users size={22} />}
+            icon={<Users className="text-status-in-progress" size={22} />}
             change={8}
             changeText="new this month"
           />
@@ -60,7 +60,7 @@ const Index = () => {
             title="Avg. Completion Time"
             value="3.2 days"
             description="For high priority tasks"
-            icon={<Clock size={22} />}
+            icon={<Clock className="text-status-delayed" size={22} />}
             change={-14}
             changeText="faster than last month"
           />

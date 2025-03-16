@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,100 +29,7 @@ import { Progress } from "@/components/ui/progress";
 import { Link } from 'react-router-dom';
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog';
 import { useToast } from "@/hooks/use-toast";
-
-// Mock data for tasks
-const tasksMock = [
-  {
-    id: '1',
-    title: 'Update website content',
-    description: 'Update the company website with new product information.',
-    status: 'in-progress',
-    priority: 'high',
-    dueDate: '2023-06-15',
-    progress: 60,
-    assignee: {
-      id: '101',
-      name: 'Sarah Johnson',
-      avatar: 'SJ',
-      color: 'bg-blue-500'
-    },
-  },
-  {
-    id: '2',
-    title: 'Prepare quarterly report',
-    description: 'Compile sales and marketing data for Q2 2023.',
-    status: 'pending',
-    priority: 'medium',
-    dueDate: '2023-06-30',
-    progress: 20,
-    assignee: {
-      id: '102',
-      name: 'Mike Anderson',
-      avatar: 'MA',
-      color: 'bg-green-500'
-    },
-  },
-  {
-    id: '3',
-    title: 'Client presentation',
-    description: 'Create presentation slides for the upcoming client meeting.',
-    status: 'pending',
-    priority: 'high',
-    dueDate: '2023-06-10',
-    progress: 0,
-    assignee: {
-      id: '103',
-      name: 'Emily Chen',
-      avatar: 'EC',
-      color: 'bg-purple-500'
-    },
-  },
-  {
-    id: '4',
-    title: 'System maintenance',
-    description: 'Perform routine maintenance on servers and databases.',
-    status: 'completed',
-    priority: 'low',
-    dueDate: '2023-06-05',
-    progress: 100,
-    assignee: {
-      id: '104',
-      name: 'Alex Thompson',
-      avatar: 'AT',
-      color: 'bg-yellow-500'
-    },
-  },
-  {
-    id: '5',
-    title: 'Update mobile app',
-    description: 'Push new features to the mobile application.',
-    status: 'in-progress',
-    priority: 'medium',
-    dueDate: '2023-06-20',
-    progress: 40,
-    assignee: {
-      id: '101',
-      name: 'Sarah Johnson',
-      avatar: 'SJ',
-      color: 'bg-blue-500'
-    },
-  },
-  {
-    id: '6',
-    title: 'Social media campaign',
-    description: 'Launch new social media marketing campaign.',
-    status: 'completed',
-    priority: 'high',
-    dueDate: '2023-06-01',
-    progress: 100,
-    assignee: {
-      id: '103',
-      name: 'Emily Chen',
-      avatar: 'EC',
-      color: 'bg-purple-500'
-    },
-  },
-];
+import { useTaskStore } from '@/store/useTaskStore';
 
 const TaskCard = ({ task }: { task: any }) => {
   // Define colors for priority badges
@@ -182,11 +89,13 @@ const TaskCard = ({ task }: { task: any }) => {
 const TasksPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState('all');
-  const [tasks, setTasks] = useState(tasksMock);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
   const [showThisWeek, setShowThisWeek] = useState(false);
   const { toast } = useToast();
+  
+  // Get tasks from store
+  const { tasks, addTask } = useTaskStore();
   
   // Filter tasks based on status, priority, time frame, and search query
   const filteredTasks = tasks.filter(task => {
@@ -222,7 +131,23 @@ const TasksPage = () => {
 
   // Handle task creation
   const handleTaskCreated = (newTask: any) => {
-    setTasks(prevTasks => [newTask, ...prevTasks]);
+    // Add activity to the task
+    const taskWithActivity = {
+      ...newTask,
+      activities: [
+        {
+          id: Date.now().toString(),
+          userId: newTask.assignee.id,
+          userName: newTask.assignee.name,
+          userAvatar: newTask.assignee.avatar || newTask.assignee.name.split(' ').map((n: string) => n[0]).join(''),
+          action: 'created this task',
+          timestamp: new Date().toISOString(),
+        }
+      ]
+    };
+    
+    addTask(taskWithActivity);
+    
     toast({
       title: "Task Created",
       description: `"${newTask.title}" has been created successfully.`

@@ -15,19 +15,21 @@ import {
   ExternalLink,
   Save,
   X,
-  User
+  User,
+  Send
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { CustomButton } from '../ui/custom-button';
 import { useNavigate } from 'react-router-dom';
-import { Task } from '../dashboard/kanban-board';
+import { Task, useTaskStore, TaskActivity } from '@/store/useTaskStore';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useStatusStore } from '@/store/useStatusStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
+import { Textarea } from '@/components/ui/textarea';
 
 interface TaskDetailProps {
   task: Task;
@@ -39,15 +41,36 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const { toast } = useToast();
   const { statuses } = useStatusStore();
   const { employees } = useEmployeeStore();
+  const { updateTask, addActivity } = useTaskStore();
   
   const [isEditing, setIsEditing] = useState(false);
   const [task, setTask] = useState<Task>(initialTask);
   const [editedTask, setEditedTask] = useState<Task>(initialTask);
+  const [comment, setComment] = useState('');
 
   // Format date string
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  // Format timestamp for activity feed
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMilliseconds = now.getTime() - date.getTime();
+    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      const hours = Math.floor(diffInHours);
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
   };
 
   // Get priority class
@@ -112,9 +135,26 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   };
 
   const handleSaveEdit = () => {
-    // In a real app, this would save to a backend
+    // Update task in store
+    updateTask(task.id, editedTask);
+    
+    // Update local state
     setTask(editedTask);
     setIsEditing(false);
+    
+    // Add activity if status changed
+    if (task.status !== editedTask.status) {
+      const statusName = statuses.find(s => s.id === editedTask.status)?.name || editedTask.status;
+      const prevStatusName = statuses.find(s => s.id === task.status)?.name || task.status;
+      
+      addActivity(task.id, {
+        userId: '101', // Hardcoded for demo
+        userName: 'John Doe', // Hardcoded for demo
+        userAvatar: 'JD',
+        action: `changed status from ${prevStatusName.replace('-', ' ')} to ${statusName.replace('-', ' ')}`,
+        timestamp: new Date().toISOString(),
+      });
+    }
     
     const statusName = statuses.find(s => s.id === editedTask.status)?.name || editedTask.status;
     
@@ -157,12 +197,71 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
 
   const handleQuickComplete = () => {
     const updatedTask = { ...task, status: 'completed', progress: 100 };
+    
+    // Update task in store
+    updateTask(task.id, updatedTask);
+    
+    // Update local state
     setTask(updatedTask);
     setEditedTask(updatedTask);
+    
+    // Add activity
+    addActivity(task.id, {
+      userId: '101', // Hardcoded for demo
+      userName: 'John Doe', // Hardcoded for demo
+      userAvatar: 'JD',
+      action: 'marked as completed',
+      timestamp: new Date().toISOString(),
+    });
     
     toast({
       title: "Task completed",
       description: "The task has been marked as completed.",
+    });
+  };
+
+  const handleRequestExtension = () => {
+    toast({
+      title: "Extension Requested",
+      description: "Your request for an extension has been submitted.",
+    });
+    
+    // Add activity
+    addActivity(task.id, {
+      userId: '101', // Hardcoded for demo
+      userName: 'John Doe', // Hardcoded for demo
+      userAvatar: 'JD',
+      action: 'requested a deadline extension',
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  const handleAddComment = () => {
+    if (!comment.trim()) return;
+    
+    // Add activity with comment
+    addActivity(task.id, {
+      userId: '101', // Hardcoded for demo
+      userName: 'John Doe', // Hardcoded for demo
+      userAvatar: 'JD',
+      action: 'added a comment',
+      comment: comment,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Clear comment field
+    setComment('');
+    
+    // Update task in local state to show the comment
+    const updatedTask = useTaskStore.getState().getTaskById(task.id);
+    if (updatedTask) {
+      setTask(updatedTask);
+      setEditedTask(updatedTask);
+    }
+    
+    toast({
+      title: "Comment Added",
+      description: "Your comment has been added to the task.",
     });
   };
 
@@ -365,71 +464,45 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
             </h3>
             
             <div className="space-y-4">
-              <div className="flex">
-                <div className="mr-3">
-                  <Avatar className="h-8 w-8 border border-border">
-                    <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
-                      JD
-                    </div>
-                  </Avatar>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-sm">John Doe</div>
-                    <div className="text-xs text-muted-foreground">2 hours ago</div>
+              {task.activities && task.activities.map((activity) => (
+                <div key={activity.id} className="flex">
+                  <div className="mr-3">
+                    <Avatar className="h-8 w-8 border border-border">
+                      <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
+                        {activity.userAvatar}
+                      </div>
+                    </Avatar>
                   </div>
-                  <p className="text-sm mt-1">
-                    Changed status from <span className="font-medium">Pending</span> to <span className="font-medium">In Progress</span>
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex">
-                <div className="mr-3">
-                  <Avatar className="h-8 w-8 border border-border">
-                    <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
-                      EM
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium text-sm">{activity.userName}</div>
+                      <div className="text-xs text-muted-foreground">{formatTimestamp(activity.timestamp)}</div>
                     </div>
-                  </Avatar>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-sm">Emily Martinez</div>
-                    <div className="text-xs text-muted-foreground">Yesterday</div>
+                    <p className="text-sm mt-1">
+                      {activity.action}
+                    </p>
+                    {activity.comment && (
+                      <p className="text-sm mt-1 p-2 bg-muted/50 rounded-md">
+                        "{activity.comment}"
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm mt-1">
-                    Added a comment: "We need to review this with the design team before proceeding."
-                  </p>
                 </div>
-              </div>
-              
-              <div className="flex">
-                <div className="mr-3">
-                  <Avatar className="h-8 w-8 border border-border">
-                    <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
-                      {task.assignee.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                  </Avatar>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-sm">{task.assignee.name}</div>
-                    <div className="text-xs text-muted-foreground">3 days ago</div>
-                  </div>
-                  <p className="text-sm mt-1">
-                    Created this task
-                  </p>
-                </div>
-              </div>
+              ))}
+
+              {(!task.activities || task.activities.length === 0) && (
+                <p className="text-sm text-muted-foreground">No activity yet.</p>
+              )}
             </div>
             
             {/* Add comment */}
             <div className="mt-6">
               <div className="relative">
-                <textarea 
+                <Textarea 
                   placeholder="Add a comment..." 
-                  className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
-                  rows={2}
+                  className="w-full p-3 min-h-[80px] rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
                 />
                 <div className="absolute right-3 bottom-3 flex space-x-2">
                   <button className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
@@ -438,7 +511,13 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                 </div>
               </div>
               <div className="flex justify-end mt-2">
-                <CustomButton size="sm" variant="primary">
+                <CustomButton 
+                  size="sm" 
+                  variant="primary" 
+                  icon={<Send size={16} />}
+                  onClick={handleAddComment}
+                  disabled={!comment.trim()}
+                >
                   Send
                 </CustomButton>
               </div>
@@ -453,7 +532,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
             <h3 className="font-semibold mb-4">Assignee</h3>
             {isEditing ? (
               <Select 
-                value={task.assignee.id}
+                value={editedTask.assignee.id}
                 onValueChange={(value) => {
                   const selectedEmployee = employees.find(emp => emp.id === value);
                   if (selectedEmployee) {
@@ -511,6 +590,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                 fullWidth 
                 variant="warning" 
                 icon={<Clock size={16} />}
+                onClick={handleRequestExtension}
+                disabled={task.status === 'completed'}
               >
                 Request Extension
               </CustomButton>

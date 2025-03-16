@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { TaskCard } from './task-card';
 import { Plus } from 'lucide-react';
@@ -8,22 +8,7 @@ import { CreateTaskDialog } from '../tasks/create-task-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useStatusStore } from '@/store/useStatusStore';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-
-// Task type definition
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: 'low' | 'medium' | 'high';
-  dueDate: string;
-  progress: number;
-  assignee: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-}
+import { useTaskStore, Task } from '@/store/useTaskStore';
 
 interface KanbanColumnProps {
   title: string;
@@ -134,89 +119,8 @@ interface KanbanBoardProps {
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
   const { toast } = useToast();
   const { statuses } = useStatusStore();
+  const { tasks, updateTask, addTask } = useTaskStore();
   
-  // Sample data
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Update website content',
-      description: 'Update the company website with new product information',
-      status: 'pending',
-      priority: 'high',
-      dueDate: '2023-06-15',
-      progress: 0,
-      assignee: {
-        id: '101',
-        name: 'Sarah Johnson',
-      },
-    },
-    {
-      id: '2',
-      title: 'Prepare quarterly report',
-      description: 'Compile data and prepare the Q2 financial report',
-      status: 'in-progress',
-      priority: 'medium',
-      dueDate: '2023-06-20',
-      progress: 60,
-      assignee: {
-        id: '102',
-        name: 'Mike Chen',
-      },
-    },
-    {
-      id: '3',
-      title: 'Client meeting preparation',
-      description: 'Prepare presentation and materials for client meeting',
-      status: 'in-progress',
-      priority: 'high',
-      dueDate: '2023-06-10',
-      progress: 30,
-      assignee: {
-        id: '103',
-        name: 'Jennifer Lee',
-      },
-    },
-    {
-      id: '4',
-      title: 'Update social media strategy',
-      description: 'Revise the social media content calendar for next month',
-      status: 'completed',
-      priority: 'low',
-      dueDate: '2023-06-05',
-      progress: 100,
-      assignee: {
-        id: '104',
-        name: 'Alex Wong',
-      },
-    },
-    {
-      id: '5',
-      title: 'Review new design mockups',
-      description: 'Review and provide feedback on new design mockups',
-      status: 'delayed',
-      priority: 'medium',
-      dueDate: '2023-06-01',
-      progress: 20,
-      assignee: {
-        id: '105',
-        name: 'Emily Davis',
-      },
-    },
-    {
-      id: '6',
-      title: 'Finalize budget for Q3',
-      description: 'Complete budget planning for the next quarter',
-      status: 'pending',
-      priority: 'high',
-      dueDate: '2023-06-25',
-      progress: 0,
-      assignee: {
-        id: '106',
-        name: 'Robert Miller',
-      },
-    },
-  ]);
-
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newTaskStatus, setNewTaskStatus] = useState<string>('pending');
 
@@ -236,13 +140,24 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
 
   // Handle the task creation from dialog
   const handleTaskCreated = (newTask: any) => {
-    // Override the status with the one selected when clicking the Add Task button
-    const taskWithStatus = {
+    // Add activity to the task
+    const taskWithActivity = {
       ...newTask,
-      status: newTaskStatus
+      status: newTaskStatus,
+      activities: [
+        {
+          id: Date.now().toString(),
+          userId: newTask.assignee.id,
+          userName: newTask.assignee.name,
+          userAvatar: newTask.assignee.avatar || newTask.assignee.name.split(' ').map((n: string) => n[0]).join(''),
+          action: 'created this task',
+          timestamp: new Date().toISOString(),
+        }
+      ]
     };
     
-    setTasks(prevTasks => [taskWithStatus, ...prevTasks]);
+    addTask(taskWithActivity);
+    
     toast({
       title: "Task Created",
       description: `"${newTask.title}" has been created successfully.`
@@ -262,26 +177,28 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
       const taskId = result.draggableId;
       const newStatus = destination.droppableId;
       
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === taskId ? { ...task, status: newStatus } : task
-        )
-      );
-      
-      // Show toast notification
+      // Find the task to update
       const task = tasks.find(t => t.id === taskId);
-      const statusName = statuses.find(s => s.id === newStatus)?.name;
       
-      if (task && statusName) {
+      if (task) {
+        // Create activity for status change
+        const statusName = statuses.find(s => s.id === newStatus)?.name || newStatus;
+        const prevStatusName = statuses.find(s => s.id === task.status)?.name || task.status;
+        
+        // Update task status
+        updateTask(taskId, { 
+          status: newStatus,
+          // If moving to completed, set progress to 100%
+          progress: newStatus === 'completed' ? 100 : task.progress
+        });
+        
+        // Show toast notification
         toast({
           title: `Task Status Updated`,
           description: `"${task.title}" has been moved to ${statusName}`
         });
       }
-    } else if (source.index !== destination.index) {
-      // Reordering within same column - we could implement this if needed
-      // For now, we'll just leave the tasks in their current order
-    }
+    } 
   };
 
   return (

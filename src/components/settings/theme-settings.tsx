@@ -10,13 +10,6 @@ export function ThemeSettings() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Appearance</CardTitle>
-        <CardDescription>
-          Customize the appearance of the application
-        </CardDescription>
-      </CardHeader>
       <CardContent>
         <RadioGroup
           value={theme}
@@ -69,6 +62,5 @@ export function ThemeSettings() {
           </div>
         </RadioGroup>
       </CardContent>
-    </Card>
   );
 }

@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -10,7 +11,8 @@ import {
   Bell, 
   Menu,
   X,
-  PanelLeft
+  PanelLeft,
+  PanelRight
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -73,8 +75,8 @@ const Sidebar = ({ className }: { className?: string }) => {
     <div className={cn('h-screen flex flex-col bg-card/80 border-r w-full', className)}>
       <div className="p-4">
         <div className="flex items-center">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">P</div>
-          <h1 className="text-xl font-bold ml-2">ProjectHub</h1>
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">D</div>
+          <h1 className="text-xl font-bold ml-2">DelegateEase</h1>
         </div>
       </div>
       
@@ -139,34 +141,34 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
     <div className="flex w-full h-screen overflow-hidden">
       {/* Sidebar for desktop */}
       {!isMobile && (
-        <div className={cn("h-screen transition-all duration-300", 
-          isSidebarCollapsed ? "w-16 flex-shrink-0" : "w-64 flex-shrink-0")}>
-          {isSidebarCollapsed ? (
-            <div className="h-full flex flex-col bg-card/80 border-r w-full items-center py-4 fixed">
-              <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-6">P</div>
-              <div className="flex-1">
-                <nav className="grid gap-2">
-                  {sidebarOptions.map((option) => (
-                    <Button
-                      key={option.path}
-                      variant={location.pathname === option.path ? 'secondary' : 'ghost'}
-                      size="icon"
-                      className="h-10 w-10"
-                      onClick={() => navigate(option.path)}
-                    >
-                      <span>{option.icon}</span>
-                      <span className="sr-only">{option.label}</span>
-                    </Button>
-                  ))}
-                </nav>
+        <aside className={cn("h-screen transition-all duration-300 flex-shrink-0", 
+          isSidebarCollapsed ? "w-16" : "w-64")}>
+          <div className={cn("h-full border-r fixed", isSidebarCollapsed ? "w-16" : "w-64")}>
+            {isSidebarCollapsed ? (
+              <div className="h-full flex flex-col bg-card/80 w-full items-center py-4">
+                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-6">D</div>
+                <div className="flex-1 w-full flex flex-col items-center">
+                  <nav className="w-full grid gap-2 px-2">
+                    {sidebarOptions.map((option) => (
+                      <Button
+                        key={option.path}
+                        variant={location.pathname === option.path ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-10 w-10 mx-auto"
+                        onClick={() => navigate(option.path)}
+                      >
+                        <span>{option.icon}</span>
+                        <span className="sr-only">{option.label}</span>
+                      </Button>
+                    ))}
+                  </nav>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="fixed h-screen">
+            ) : (
               <Sidebar />
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </aside>
       )}
       
       {/* Mobile sidebar (overlay) */}
@@ -183,7 +185,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       )}
       
       {/* Content */}
-      <div className="flex-1 flex flex-col w-full h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Desktop header with collapse button */}
         {!isMobile && (
           <div className="h-14 flex items-center px-4 border-b w-full sticky top-0 z-10 bg-background">
@@ -192,8 +194,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               size="icon"
               onClick={toggleSidebar}
               className="mr-4"
+              aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <PanelLeft />
+              {isSidebarCollapsed ? <PanelRight size={20} /> : <PanelLeft size={20} />}
             </Button>
           </div>
         )}
@@ -207,17 +210,17 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               className="md:hidden" 
               onClick={() => setIsOpen(true)}
             >
-              <Menu />
+              <Menu size={20} />
             </Button>
             <div className="flex items-center ml-3">
               <div className="w-6 h-6 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">P</div>
-              <h1 className="text-lg font-bold ml-1">ProjectHub</h1>
+              <h1 className="text-lg font-bold ml-1">DelegateEase</h1>
             </div>
           </div>
         )}
         
         {/* Main content */}
-        <main className="flex-1 overflow-auto p-4 md:p-8 pb-16 w-full">
+        <main className="flex-1 overflow-auto p-4 md:p-6 pb-8 w-full">
           {children}
         </main>
       </div>

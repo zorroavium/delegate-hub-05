@@ -149,10 +149,12 @@ export function EmployeeManagement() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
+            <div className="space-y-1.5">
             <CardTitle>Employees Management</CardTitle>
             <CardDescription>
               Add, edit and remove employees from your organization
             </CardDescription>
+            </div>
           </div>
           <Button onClick={handleNewEmployee}>
             <Plus size={16} className="mr-2" />
