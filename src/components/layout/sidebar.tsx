@@ -69,7 +69,7 @@ const Sidebar = ({ className }: { className?: string }) => {
   const location = useLocation();
   
   return (
-    <div className={cn('h-screen flex flex-col bg-card/80 border-r', className)}>
+    <div className={cn('h-screen flex flex-col bg-card/80 border-r w-full', className)}>
       <div className="p-4">
         <div className="flex items-center">
           <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">P</div>
@@ -84,7 +84,7 @@ const Sidebar = ({ className }: { className?: string }) => {
               key={option.path}
               variant={location.pathname === option.path ? 'secondary' : 'ghost'}
               className={cn(
-                'justify-start h-11',
+                'justify-start h-11 w-full',
                 location.pathname === option.path ? 'bg-secondary font-medium text-secondary-foreground' : ''
               )}
               onClick={() => navigate(option.path)}
@@ -128,10 +128,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   }, [isMobile]);
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex w-full">
       {/* Sidebar for desktop */}
       {!isMobile && (
-        <div className="w-64 hidden md:block">
+        <div className="w-64 flex-shrink-0">
           <Sidebar />
         </div>
       )}
@@ -150,10 +150,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       )}
       
       {/* Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col w-full">
         {/* Mobile header */}
         {isMobile && (
-          <div className="h-14 flex items-center px-4 border-b">
+          <div className="h-14 flex items-center px-4 border-b w-full">
             <Button 
               variant="ghost" 
               size="icon" 
@@ -170,7 +170,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         )}
         
         {/* Main content */}
-        <main className="flex-1 overflow-auto p-4 md:p-8 pb-16">
+        <main className="flex-1 overflow-auto p-4 md:p-8 pb-16 w-full">
           {children}
         </main>
       </div>

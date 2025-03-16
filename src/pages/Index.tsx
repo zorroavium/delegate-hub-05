@@ -8,8 +8,8 @@ import { CheckCircle2, AlertCircle, Users, Clock } from 'lucide-react';
 const Index = () => {
   return (
     <SidebarLayout>
-      <div className="space-y-8 animate-fade-in">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="space-y-8 animate-fade-in w-full">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground mt-1">Track your tasks and team's progress</p>
@@ -31,7 +31,7 @@ const Index = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
           <StatsCard
             title="Tasks Completed"
             value="28"
@@ -67,7 +67,7 @@ const Index = () => {
         </div>
 
         {/* Kanban Board */}
-        <div>
+        <div className="w-full">
           <h2 className="text-xl font-semibold mb-4">Task Overview</h2>
           <KanbanBoard />
         </div>
