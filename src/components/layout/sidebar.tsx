@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -20,6 +19,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SidebarOption {
   path: string;
@@ -78,7 +78,7 @@ const Sidebar = ({ className }: { className?: string }) => {
         </div>
       </div>
       
-      <div className="flex-1 overflow-auto px-2 py-2">
+      <ScrollArea className="flex-1 px-2 py-2">
         <nav className="grid gap-1">
           {sidebarOptions.map((option) => (
             <Button
@@ -95,7 +95,7 @@ const Sidebar = ({ className }: { className?: string }) => {
             </Button>
           ))}
         </nav>
-      </div>
+      </ScrollArea>
       
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
@@ -136,13 +136,13 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex w-full">
+    <div className="flex w-full h-screen overflow-hidden">
       {/* Sidebar for desktop */}
       {!isMobile && (
-        <div className={cn("transition-all duration-300", 
+        <div className={cn("h-screen transition-all duration-300", 
           isSidebarCollapsed ? "w-16 flex-shrink-0" : "w-64 flex-shrink-0")}>
           {isSidebarCollapsed ? (
-            <div className="h-screen flex flex-col bg-card/80 border-r w-full items-center py-4">
+            <div className="h-full flex flex-col bg-card/80 border-r w-full items-center py-4 fixed">
               <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-6">P</div>
               <div className="flex-1">
                 <nav className="grid gap-2">
@@ -162,7 +162,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           ) : (
-            <Sidebar />
+            <div className="fixed h-screen">
+              <Sidebar />
+            </div>
           )}
         </div>
       )}
@@ -181,10 +183,10 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       )}
       
       {/* Content */}
-      <div className="flex-1 flex flex-col w-full">
+      <div className="flex-1 flex flex-col w-full h-screen overflow-hidden">
         {/* Desktop header with collapse button */}
         {!isMobile && (
-          <div className="h-14 flex items-center px-4 border-b w-full">
+          <div className="h-14 flex items-center px-4 border-b w-full sticky top-0 z-10 bg-background">
             <Button 
               variant="ghost" 
               size="icon"
@@ -198,7 +200,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         
         {/* Mobile header */}
         {isMobile && (
-          <div className="h-14 flex items-center px-4 border-b w-full">
+          <div className="h-14 flex items-center px-4 border-b w-full sticky top-0 z-10 bg-background">
             <Button 
               variant="ghost" 
               size="icon" 
