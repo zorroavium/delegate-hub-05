@@ -119,7 +119,7 @@ const Sidebar = ({ className }: { className?: string }) => {
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     if (!isMobile) {
