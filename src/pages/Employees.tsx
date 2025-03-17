@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar";
 import { EmployeeProfile } from "@/components/employees/employee-profile";
@@ -8,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { CheckCircle, BarChart2, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { EmployeeCard } from "@/components/employees/employee-card";
 
 const EmployeesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -108,97 +108,11 @@ const EmployeesPage: React.FC = () => {
 
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {employees.map((employee) => {
-              const stats = getEmployeeStats(employee.id);
-              return (
-                <div 
-                  key={employee.id} 
-                  className="glass-card p-6 cursor-pointer hover:shadow-lg transition-shadow relative"
-                  onClick={() => handleEmployeeClick(employee)}
-                >
-                  {/* Status badge moved to top right */}
-                  <div className="absolute top-4 right-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      employee.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : 
-                      employee.status === "inactive" ? "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400" : 
-                      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                    }`}>
-                      {employee.status.replace("-", " ")}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white ${employee.color}`}>
-                      {employee.avatar}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold">{employee.name}</h3>
-                      <p className="text-muted-foreground">{employee.role}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 space-y-1">
-                    <p className="text-sm">
-                      <span className="font-medium">Department:</span> {employee.department}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium">Location:</span> {employee.location || 'N/A'}
-                    </p>
-                  </div>
-                  
-                  {/* Performance metrics */}
-                  <div className="mt-5 pt-4 border-t border-border">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="text-sm font-medium">Task Completion</h4>
-                      <span className="text-sm font-medium">{stats.completionRate}%</span>
-                    </div>
-                    <Progress value={stats.completionRate} className="h-2 mb-3" />
-                    
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      <div 
-                        className="flex flex-col items-center justify-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/tasks?status=pending&employee=${employee.id}`);
-                        }}
-                      >
-                        <div className="flex items-center gap-1 mb-1">
-                          <Clock size={14} className="text-blue-500" />
-                          <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Pending</span>
-                        </div>
-                        <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{stats.pendingTasks}</span>
-                      </div>
-                      <div 
-                        className="flex flex-col items-center justify-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/tasks?status=in-progress&employee=${employee.id}`);
-                        }}
-                      >
-                        <div className="flex items-center gap-1 mb-1">
-                          <BarChart2 size={14} className="text-amber-500" />
-                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">In Progress</span>
-                        </div>
-                        <span className="text-lg font-bold text-amber-700 dark:text-amber-300">{stats.inProgressTasks}</span>
-                      </div>
-                      <div 
-                        className="flex flex-col items-center justify-center p-2 bg-green-50 dark:bg-green-900/20 rounded-md cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/tasks?status=completed&employee=${employee.id}`);
-                        }}
-                      >
-                        <div className="flex items-center gap-1 mb-1">
-                          <CheckCircle size={14} className="text-green-500" />
-                          <span className="text-xs font-medium text-green-700 dark:text-green-300">Completed</span>
-                        </div>
-                        <span className="text-lg font-bold text-green-700 dark:text-green-300">{stats.completedTasks}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {employees.map((employee) => (
+              <div key={employee.id} onClick={() => handleEmployeeClick(employee)}>
+                <EmployeeCard employee={employee} />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="glass-card">

@@ -73,7 +73,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
     <Link
       to={`/task/${task.id}`}
       className={cn(
-        'block bg-card hover:bg-accent/5 rounded-lg border border-l-4 shadow-sm p-4 transition-all duration-300 hover:shadow-md max-w-md mx-auto lg:mx-0',
+        'block bg-card hover:bg-accent/5 rounded-lg border border-l-4 shadow-sm p-4 transition-all duration-300 hover:shadow-md',
         getStatusClass(),
         className
       )}
@@ -115,7 +115,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
           <Progress 
             value={task.progress} 
             className="h-1.5" 
-            indicatorClassName={task.status === 'completed' ? 'bg-green-500' : undefined}
+            indicatorClassName={task.status === 'completed' ? "bg-green-500" : undefined}
           />
         </div>
 
@@ -123,7 +123,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
         <div className="flex items-center justify-between pt-2 mt-2 border-t border-border/30">
           {/* Due date */}
           <div className="flex items-center text-xs text-muted-foreground">
-            <Calendar size={14} className="mr-1" />
+            <Calendar size={14} className="mr-1 shrink-0" />
             <span className={cn(
               isPastDue() && 'text-status-delayed font-medium flex items-center gap-1',
             )}>
