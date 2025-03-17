@@ -1,11 +1,14 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MapPin, Briefcase, Calendar, User } from 'lucide-react';
+import { useEmployeeStore } from "@/store/useEmployeeStore";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export interface Employee {
   id: string;
@@ -33,10 +36,28 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
   isOpen,
   onClose
 }) => {
+  const { updateEmployee } = useEmployeeStore();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  
   const statusColors = {
-    'active': 'bg-green-100 text-green-800',
-    'inactive': 'bg-gray-100 text-gray-800',
-    'on-leave': 'bg-amber-100 text-amber-800'
+    'active': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    'inactive': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
+    'on-leave': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+  };
+
+  const handleEditEmployee = () => {
+    // Close the profile dialog
+    onClose();
+    
+    // Navigate to the settings page and open the employee management section
+    navigate("/settings");
+    
+    // Set a timeout to allow the page to render before triggering the edit
+    setTimeout(() => {
+      const event = new CustomEvent("edit-employee", { detail: { employeeId: employee.id } });
+      document.dispatchEvent(event);
+    }, 500);
   };
 
   return (
@@ -51,7 +72,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
           <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             <Avatar className={`h-20 w-20 ${employee.color || 'bg-primary'}`}>
               {employee.avatar ? (
-                <img src={employee.avatar} alt={employee.name} />
+                <span className="text-xl text-white">{employee.avatar}</span>
               ) : (
                 <span className="text-xl text-white">{employee.name.split(' ').map(n => n[0]).join('')}</span>
               )}
@@ -89,7 +110,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
-                <span>{employee.location}</span>
+                <span>{employee.location || 'Not specified'}</span>
               </div>
             </CardContent>
           </Card>
@@ -131,11 +152,15 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {employee.skills.map((skill, index) => (
-                  <Badge key={index} variant="secondary">
-                    {skill}
-                  </Badge>
-                ))}
+                {employee.skills && employee.skills.length > 0 ? (
+                  employee.skills.map((skill, index) => (
+                    <Badge key={index} variant="secondary">
+                      {skill}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No skills listed</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -143,7 +168,7 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
         
         <DialogFooter className="mt-6">
           <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button>Edit Profile</Button>
+          <Button onClick={handleEditEmployee}>Edit Profile</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

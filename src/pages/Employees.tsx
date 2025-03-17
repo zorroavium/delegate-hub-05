@@ -1,106 +1,42 @@
 
 import React, { useState } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar";
-import { EmployeeProfile, Employee } from "@/components/employees/employee-profile";
-
-// Mock employee data
-const employeesData: Employee[] = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    role: "Marketing Director",
-    department: "Marketing",
-    email: "sarah.johnson@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "New York, NY",
-    avatar: "SJ",
-    color: "bg-blue-500",
-    joinDate: "2018-05-12",
-    status: "active",
-    skills: ["Content Strategy", "Digital Marketing", "Brand Management"],
-  },
-  {
-    id: "2",
-    name: "Michael Chen",
-    role: "Senior Developer",
-    department: "Engineering",
-    email: "michael.chen@example.com",
-    phone: "+1 (555) 987-6543",
-    location: "San Francisco, CA",
-    avatar: "MC",
-    color: "bg-green-500",
-    joinDate: "2019-02-15",
-    status: "active",
-    skills: ["JavaScript", "React", "Node.js", "TypeScript"],
-  },
-  {
-    id: "3",
-    name: "Emily Rodriguez",
-    role: "UX Designer",
-    department: "Design",
-    email: "emily.r@example.com",
-    phone: "+1 (555) 234-5678",
-    location: "Austin, TX",
-    avatar: "ER",
-    color: "bg-purple-500",
-    joinDate: "2020-07-10",
-    status: "active",
-    skills: ["UI/UX Design", "Wireframing", "Prototyping", "User Research"],
-  },
-  {
-    id: "4",
-    name: "David Kim",
-    role: "Product Manager",
-    department: "Product",
-    email: "david.kim@example.com",
-    phone: "+1 (555) 345-6789",
-    location: "Chicago, IL",
-    avatar: "DK",
-    color: "bg-yellow-500",
-    joinDate: "2017-11-03",
-    status: "on-leave",
-    skills: ["Product Strategy", "Agile", "User Stories", "Roadmapping"],
-  },
-  {
-    id: "5",
-    name: "Jessica Patel",
-    role: "HR Specialist",
-    department: "Human Resources",
-    email: "j.patel@example.com",
-    phone: "+1 (555) 456-7890",
-    location: "Boston, MA",
-    avatar: "JP",
-    color: "bg-red-500",
-    joinDate: "2019-09-22",
-    status: "active",
-    skills: ["Recruiting", "Employee Relations", "Benefits Administration"],
-  },
-  {
-    id: "6",
-    name: "Robert Washington",
-    role: "Financial Analyst",
-    department: "Finance",
-    email: "r.washington@example.com",
-    phone: "+1 (555) 567-8901",
-    location: "Miami, FL",
-    avatar: "RW",
-    color: "bg-indigo-500",
-    joinDate: "2021-01-15",
-    status: "inactive",
-    skills: ["Financial Reporting", "Budgeting", "Forecasting", "Excel"],
-  },
-];
+import { EmployeeProfile } from "@/components/employees/employee-profile";
+import { useEmployeeStore } from "@/store/useEmployeeStore";
+import { useTaskStore } from "@/store/useTaskStore";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle, BarChart2, Clock, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const EmployeesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
+  const { employees } = useEmployeeStore();
+  const { tasks } = useTaskStore();
   
-  const handleEmployeeClick = (employee: Employee) => {
+  const handleEmployeeClick = (employee: any) => {
     setSelectedEmployee(employee);
   };
   
   const handleCloseProfile = () => {
     setSelectedEmployee(null);
+  };
+
+  // Calculate employee performance stats
+  const getEmployeeStats = (employeeId: string) => {
+    const employeeTasks = tasks.filter(task => task.assignee.id === employeeId);
+    const totalTasks = employeeTasks.length;
+    const completedTasks = employeeTasks.filter(task => task.status === 'completed').length;
+    const inProgressTasks = employeeTasks.filter(task => task.status === 'in-progress').length;
+    const pendingTasks = employeeTasks.filter(task => task.status === 'pending').length;
+    
+    return {
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks,
+      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+    };
   };
   
   return (
@@ -108,120 +44,192 @@ const EmployeesPage: React.FC = () => {
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Employees</h1>
-          <div className="space-x-2">
-            <button
-              className={`px-3 py-1 rounded ${viewMode === "grid" ? "bg-primary text-white" : "bg-gray-200"}`}
-              onClick={() => setViewMode("grid")}
-            >
-              Grid
-            </button>
-            <button
-              className={`px-3 py-1 rounded ${viewMode === "list" ? "bg-primary text-white" : "bg-gray-200"}`}
-              onClick={() => setViewMode("list")}
-            >
-              List
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="space-x-2 bg-muted/60 rounded-md p-1">
+              <Button
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                Grid
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                List
+              </Button>
+            </div>
           </div>
         </div>
 
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {employeesData.map((employee) => (
-              <div 
-                key={employee.id} 
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleEmployeeClick(employee)}
-              >
-                <div className="p-6">
+            {employees.map((employee) => {
+              const stats = getEmployeeStats(employee.id);
+              return (
+                <div 
+                  key={employee.id} 
+                  className="glass-card p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => handleEmployeeClick(employee)}
+                >
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white ${employee.color}`}>
                       {employee.avatar}
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold">{employee.name}</h3>
-                      <p className="text-gray-600">{employee.role}</p>
+                      <p className="text-muted-foreground">{employee.role}</p>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-600">
+                  
+                  <div className="mt-4 space-y-1">
+                    <p className="text-sm">
                       <span className="font-medium">Department:</span> {employee.department}
                     </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Email:</span> {employee.email}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Location:</span> {employee.location}
+                    <p className="text-sm">
+                      <span className="font-medium">Location:</span> {employee.location || 'N/A'}
                     </p>
                   </div>
+                  
                   <div className="mt-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      employee.status === "active" ? "bg-green-100 text-green-800" : 
-                      employee.status === "inactive" ? "bg-gray-100 text-gray-800" : 
-                      "bg-yellow-100 text-yellow-800"
+                      employee.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : 
+                      employee.status === "inactive" ? "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400" : 
+                      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
                     }`}>
                       {employee.status.replace("-", " ")}
                     </span>
                   </div>
+                  
+                  {/* Performance metrics */}
+                  <div className="mt-5 pt-4 border-t border-border">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-medium">Task Completion</h4>
+                      <span className="text-sm font-medium">{stats.completionRate}%</span>
+                    </div>
+                    <Progress value={stats.completionRate} className="h-2 mb-3" />
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-3">
+                      <div className="flex flex-col items-center justify-center p-2 bg-muted/60 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <Clock size={14} className="text-blue-500" />
+                          <span className="text-xs font-medium">Pending</span>
+                        </div>
+                        <span className="text-lg font-bold">{stats.pendingTasks}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center p-2 bg-muted/60 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <BarChart2 size={14} className="text-amber-500" />
+                          <span className="text-xs font-medium">Active</span>
+                        </div>
+                        <span className="text-lg font-bold">{stats.inProgressTasks}</span>
+                      </div>
+                      <div className="flex flex-col items-center justify-center p-2 bg-muted/60 rounded-md">
+                        <div className="flex items-center gap-1 mb-1">
+                          <CheckCircle size={14} className="text-green-500" />
+                          <span className="text-xs font-medium">Done</span>
+                        </div>
+                        <span className="text-lg font-bold">{stats.completedTasks}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Employee
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Department
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {employeesData.map((employee) => (
-                  <tr 
-                    key={employee.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleEmployeeClick(employee)}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white ${employee.color}`}>
-                          {employee.avatar}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-                          <div className="text-sm text-gray-500">{employee.role}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{employee.department}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        employee.status === "active" ? "bg-green-100 text-green-800" : 
-                        employee.status === "inactive" ? "bg-gray-100 text-gray-800" : 
-                        "bg-yellow-100 text-yellow-800"
-                      }`}>
-                        {employee.status.replace("-", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {employee.location}
-                    </td>
+          <div className="glass-card">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-muted/50">
+                    <th className="px-6 py-3 text-left text-xs font-medium">
+                      Employee
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium">
+                      Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium">
+                      Tasks
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium">
+                      Completion Rate
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium">
+                      Status
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {employees.map((employee) => {
+                    const stats = getEmployeeStats(employee.id);
+                    return (
+                      <tr 
+                        key={employee.id}
+                        className="hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => handleEmployeeClick(employee)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white ${employee.color}`}>
+                              {employee.avatar}
+                            </div>
+                            <div className="ml-4">
+                              <div className="font-medium">{employee.name}</div>
+                              <div className="text-sm text-muted-foreground">{employee.role}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">{employee.department}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="flex gap-1 items-center">
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                  {stats.pendingTasks}
+                                </span>
+                                <Clock size={14} className="text-blue-500" />
+                              </div>
+                              <div className="flex gap-1 items-center">
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                  {stats.inProgressTasks}
+                                </span>
+                                <BarChart2 size={14} className="text-amber-500" />
+                              </div>
+                              <div className="flex gap-1 items-center">
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  {stats.completedTasks}
+                                </span>
+                                <CheckCircle size={14} className="text-green-500" />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Progress value={stats.completionRate} className="h-2 w-24" />
+                            <span className="text-sm">{stats.completionRate}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            employee.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : 
+                            employee.status === "inactive" ? "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400" : 
+                            "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}>
+                            {employee.status.replace("-", " ")}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

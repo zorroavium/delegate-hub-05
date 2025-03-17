@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { 
   Calendar, 
@@ -16,7 +16,9 @@ import {
   Save,
   X,
   User,
-  Send
+  Send,
+  Download,
+  Plus
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -30,6 +32,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStatusStore } from '@/store/useStatusStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+
+interface Attachment {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  date: string;
+  url?: string;
+}
 
 interface TaskDetailProps {
   task: Task;
@@ -41,12 +59,33 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const { toast } = useToast();
   const { statuses } = useStatusStore();
   const { employees } = useEmployeeStore();
-  const { updateTask, addActivity } = useTaskStore();
+  const { updateTask, addActivity, deleteTask } = useTaskStore();
   
   const [isEditing, setIsEditing] = useState(false);
   const [task, setTask] = useState<Task>(initialTask);
   const [editedTask, setEditedTask] = useState<Task>(initialTask);
   const [comment, setComment] = useState('');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([
+    {
+      id: "1",
+      name: "Project_Requirements.pdf",
+      type: "PDF",
+      size: "2.4 MB",
+      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "2",
+      name: "Budget_Analysis.xlsx",
+      type: "XLS",
+      size: "1.2 MB",
+      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    }
+  ]);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Format date string
   const formatDate = (dateString: string) => {
@@ -70,6 +109,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
       return 'Yesterday';
     } else {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+
+  // Get file size in human readable format
+  const formatFileSize = (size: number) => {
+    if (size < 1024) {
+      return size + ' B';
+    } else if (size < 1024 * 1024) {
+      return (size / 1024).toFixed(1) + ' KB';
+    } else {
+      return (size / (1024 * 1024)).toFixed(1) + ' MB';
     }
   };
 
@@ -221,19 +271,75 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   };
 
   const handleRequestExtension = () => {
-    toast({
-      title: "Extension Requested",
-      description: "Your request for an extension has been submitted.",
-    });
+    // Create a new due date 7 days from the current due date
+    const currentDueDate = new Date(task.dueDate);
+    const newDueDate = new Date(currentDueDate);
+    newDueDate.setDate(newDueDate.getDate() + 7);
+    
+    // Format the new due date as YYYY-MM-DD
+    const newDueDateString = newDueDate.toISOString().split('T')[0];
     
     // Add activity
     addActivity(task.id, {
       userId: '101', // Hardcoded for demo
       userName: 'John Doe', // Hardcoded for demo
       userAvatar: 'JD',
-      action: 'requested a deadline extension',
+      action: `requested a deadline extension from ${formatDate(task.dueDate)} to ${formatDate(newDueDateString)}`,
       timestamp: new Date().toISOString(),
     });
+    
+    toast({
+      title: "Extension Requested",
+      description: "Your request for an extension has been submitted.",
+    });
+  };
+
+  const handleReassignTask = () => {
+    if (!selectedEmployeeId) {
+      toast({
+        title: "Error",
+        description: "Please select an employee to reassign the task.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
+    
+    if (!selectedEmployee) return;
+    
+    const updatedTask = {
+      ...task,
+      assignee: {
+        id: selectedEmployee.id,
+        name: selectedEmployee.name,
+        avatar: selectedEmployee.avatar,
+        color: selectedEmployee.color,
+      }
+    };
+    
+    // Update task in store
+    updateTask(task.id, updatedTask);
+    
+    // Update local state
+    setTask(updatedTask);
+    setEditedTask(updatedTask);
+    
+    // Add activity
+    addActivity(task.id, {
+      userId: '101', // Hardcoded for demo
+      userName: 'John Doe', // Hardcoded for demo
+      userAvatar: 'JD',
+      action: `reassigned the task to ${selectedEmployee.name}`,
+      timestamp: new Date().toISOString(),
+    });
+    
+    toast({
+      title: "Task Reassigned",
+      description: `The task has been reassigned to ${selectedEmployee.name}.`,
+    });
+    
+    setIsReassignDialogOpen(false);
   };
 
   const handleAddComment = () => {
@@ -263,6 +369,102 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
       title: "Comment Added",
       description: "Your comment has been added to the task.",
     });
+  };
+
+  const handleDeleteTask = () => {
+    try {
+      deleteTask(task.id);
+      
+      toast({
+        title: "Task Deleted",
+        description: "The task has been deleted successfully.",
+      });
+      
+      navigate('/tasks');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete the task.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddAttachment = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    // Process each file
+    Array.from(files).forEach(file => {
+      // Create a new attachment
+      const newAttachment: Attachment = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+        size: formatFileSize(file.size),
+        date: new Date().toISOString(),
+        url: URL.createObjectURL(file),
+      };
+      
+      // Add to attachments
+      setAttachments(prev => [newAttachment, ...prev]);
+      
+      // Add activity
+      addActivity(task.id, {
+        userId: '101', // Hardcoded for demo
+        userName: 'John Doe', // Hardcoded for demo
+        userAvatar: 'JD',
+        action: `added an attachment: ${file.name}`,
+        timestamp: new Date().toISOString(),
+      });
+    });
+    
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
+    toast({
+      title: "Attachment Added",
+      description: "Your file has been attached to the task.",
+    });
+  };
+
+  const handleDownloadAttachment = (attachment: Attachment) => {
+    // For demo purpose, we'll just show a toast
+    toast({
+      title: "Download Started",
+      description: `Downloading ${attachment.name}`,
+    });
+  };
+
+  const handleDeleteAttachment = (attachmentId: string) => {
+    const attachment = attachments.find(a => a.id === attachmentId);
+    
+    if (attachment) {
+      // Remove from attachments
+      setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+      
+      // Add activity
+      addActivity(task.id, {
+        userId: '101', // Hardcoded for demo
+        userName: 'John Doe', // Hardcoded for demo
+        userAvatar: 'JD',
+        action: `removed an attachment: ${attachment.name}`,
+        timestamp: new Date().toISOString(),
+      });
+      
+      toast({
+        title: "Attachment Removed",
+        description: "The attachment has been removed from the task.",
+      });
+    }
   };
 
   const statusInfo = getStatusInfo();
@@ -316,6 +518,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                 size="sm" 
                 icon={<Trash size={16} />}
                 className="text-status-delayed"
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
                 Delete
               </CustomButton>
@@ -370,7 +573,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
 
             {/* Description */}
             {isEditing ? (
-              <textarea
+              <Textarea
                 name="description"
                 value={editedTask.description}
                 onChange={handleTaskChange}
@@ -505,9 +708,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                   onChange={(e) => setComment(e.target.value)}
                 />
                 <div className="absolute right-3 bottom-3 flex space-x-2">
-                  <button className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                  <button 
+                    className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    onClick={handleAddAttachment}
+                  >
                     <Paperclip size={16} />
                   </button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                    multiple
+                  />
                 </div>
               </div>
               <div className="flex justify-end mt-2">
@@ -541,7 +754,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                       assignee: {
                         id: selectedEmployee.id,
                         name: selectedEmployee.name,
-                        avatar: selectedEmployee.avatar
+                        avatar: selectedEmployee.avatar,
+                        color: selectedEmployee.color
                       }
                     });
                   }
@@ -560,14 +774,16 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               </Select>
             ) : (
               <div className="flex items-center">
-                <Avatar className="h-10 w-10 border border-border">
-                  <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-sm font-medium">
-                    {task.assignee.name.split(' ').map(n => n[0]).join('')}
+                <Avatar className={`h-10 w-10 border border-border ${task.assignee.color || 'bg-primary'}`}>
+                  <div className="flex items-center justify-center w-full h-full text-sm font-medium text-white">
+                    {task.assignee.avatar || task.assignee.name.split(' ').map(n => n[0]).join('')}
                   </div>
                 </Avatar>
                 <div className="ml-3">
                   <div className="font-medium">{task.assignee.name}</div>
-                  <div className="text-sm text-muted-foreground">Developer</div>
+                  <div className="text-sm text-muted-foreground">
+                    {employees.find(emp => emp.id === task.assignee.id)?.role || 'Team Member'}
+                  </div>
                 </div>
               </div>
             )}
@@ -599,6 +815,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                 fullWidth 
                 variant="outline" 
                 icon={<User size={16} />}
+                onClick={() => setIsReassignDialogOpen(true)}
               >
                 Reassign Task
               </CustomButton>
@@ -609,44 +826,125 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
           <div className="glass-card p-6">
             <h3 className="font-semibold mb-4 flex items-center">
               <Paperclip size={16} className="mr-2" />
-              Attachments (2)
+              Attachments ({attachments.length})
             </h3>
             
             <div className="space-y-3">
-              <div className="flex items-center p-3 rounded-lg border border-border bg-background/40">
-                <div className="p-2 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 mr-3">
-                  <div className="w-6 h-6 flex items-center justify-center font-medium text-xs">PDF</div>
+              {attachments.map((attachment) => (
+                <div key={attachment.id} className="flex items-center p-3 rounded-lg border border-border bg-background/40">
+                  <div className={`p-2 rounded-md mr-3 ${
+                    attachment.type === 'PDF' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                    attachment.type === 'XLS' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
+                    attachment.type === 'DOC' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                    'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
+                  }`}>
+                    <div className="w-6 h-6 flex items-center justify-center font-medium text-xs">{attachment.type}</div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{attachment.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {attachment.size} • {formatTimestamp(attachment.date)}
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="ml-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                        <MoreVertical size={14} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleDownloadAttachment(attachment)}>
+                        <Download size={14} className="mr-2" />
+                        Download
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteAttachment(attachment.id)}
+                        className="text-red-500 focus:text-red-500"
+                      >
+                        <Trash size={14} className="mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">Project_Requirements.pdf</div>
-                  <div className="text-xs text-muted-foreground">2.4 MB • 3 days ago</div>
-                </div>
-                <button className="ml-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                  <MoreVertical size={14} />
-                </button>
-              </div>
+              ))}
               
-              <div className="flex items-center p-3 rounded-lg border border-border bg-background/40">
-                <div className="p-2 rounded-md bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 mr-3">
-                  <div className="w-6 h-6 flex items-center justify-center font-medium text-xs">XLS</div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">Budget_Analysis.xlsx</div>
-                  <div className="text-xs text-muted-foreground">1.2 MB • 1 day ago</div>
-                </div>
-                <button className="ml-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                  <MoreVertical size={14} />
-                </button>
-              </div>
-              
-              <button className="text-sm text-primary hover:text-primary/80 flex items-center mt-2 font-medium">
-                <Paperclip size={14} className="mr-1" />
+              <button 
+                className="text-sm text-primary hover:text-primary/80 flex items-center mt-2 font-medium"
+                onClick={handleAddAttachment}
+              >
+                <Plus size={14} className="mr-1" />
                 Add Attachment
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  onChange={handleFileChange}
+                  multiple
+                />
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Task</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTask}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reassign Task Dialog */}
+      <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reassign Task</DialogTitle>
+            <DialogDescription>
+              Select a team member to reassign this task.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Select onValueChange={setSelectedEmployeeId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees
+                  .filter(emp => emp.status === 'active' && emp.id !== task.assignee.id)
+                  .map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name} - {employee.role}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReassignDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleReassignTask}>
+              Reassign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
