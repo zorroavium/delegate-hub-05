@@ -1,16 +1,31 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/components/theme/theme-provider';
 import { Sun, Moon, Monitor } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { toast } from '@/hooks/use-toast';
 
 export function ThemeSettings() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, themeColor, setThemeColor } = useTheme();
+  const [activeThemeColor, setActiveThemeColor] = useState(themeColor || 'blue');
+
+  const handleSaveThemeColor = () => {
+    setThemeColor(activeThemeColor);
+    
+    toast({
+      title: "Theme color updated",
+      description: `Theme color set to ${activeThemeColor.charAt(0).toUpperCase() + activeThemeColor.slice(1)}.`
+    });
+  };
 
   return (
-      <CardContent>
+    <>
+      <CardContent className="space-y-2">
+        <h3 className="text-lg font-medium">Mode</h3>
         <RadioGroup
           value={theme}
           onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}
@@ -62,5 +77,43 @@ export function ThemeSettings() {
           </div>
         </RadioGroup>
       </CardContent>
+
+      <Separator className="my-4" />
+      
+      <CardContent className="space-y-4">
+        <h3 className="text-lg font-medium">Theme Colors</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-col items-center space-y-2">
+            <div 
+              className={`w-10 h-10 rounded-full bg-blue-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-blue-500 ${activeThemeColor === 'blue' ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
+              onClick={() => setActiveThemeColor('blue')}
+            ></div>
+            <span className="text-sm">Blue</span>
+          </div>
+          <div className="flex flex-col items-center space-y-2">
+            <div 
+              className={`w-10 h-10 rounded-full bg-purple-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-purple-500 ${activeThemeColor === 'purple' ? 'ring-2 ring-offset-2 ring-purple-500' : ''}`}
+              onClick={() => setActiveThemeColor('purple')}
+            ></div>
+            <span className="text-sm">Purple</span>
+          </div>
+          <div className="flex flex-col items-center space-y-2">
+            <div 
+              className={`w-10 h-10 rounded-full bg-green-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-green-500 ${activeThemeColor === 'green' ? 'ring-2 ring-offset-2 ring-green-500' : ''}`}
+              onClick={() => setActiveThemeColor('green')}
+            ></div>
+            <span className="text-sm">Green</span>
+          </div>
+          <div className="flex flex-col items-center space-y-2">
+            <div 
+              className={`w-10 h-10 rounded-full bg-orange-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-orange-500 ${activeThemeColor === 'orange' ? 'ring-2 ring-offset-2 ring-orange-500' : ''}`}
+              onClick={() => setActiveThemeColor('orange')}
+            ></div>
+            <span className="text-sm">Orange</span>
+          </div>
+        </div>
+        <Button onClick={handleSaveThemeColor} className="mt-4">Save Theme Color</Button>
+      </CardContent>
+    </>
   );
 }
