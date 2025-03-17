@@ -17,35 +17,32 @@ const EmployeesPage: React.FC = () => {
   const navigate = useNavigate();
   
   const handleEmployeeClick = (employee: any) => {
-    setSelectedEmployee(employee);
+    if (viewMode === "list") {
+      setSelectedEmployee(employee);
+    }
   };
   
   const handleCloseProfile = () => {
     setSelectedEmployee(null);
   };
 
-  // Calculate employee performance stats - persist across refreshes
   const getEmployeeStats = (employeeId: string) => {
-    // Try to get stats from localStorage first
     const savedStats = localStorage.getItem(`employee-stats-${employeeId}`);
     const hasSavedStats = savedStats !== null;
     
-    // If we have saved stats, use them, otherwise calculate
     if (hasSavedStats) {
       return JSON.parse(savedStats);
     }
     
     const employeeTasks = tasks.filter(task => task.assignee.id === employeeId);
-    const totalTasks = employeeTasks.length || Math.floor(Math.random() * 8) + 2; // Ensure some tasks are shown
+    const totalTasks = employeeTasks.length || Math.floor(Math.random() * 8) + 2;
     
-    // Generate more realistic non-zero values for tasks
-    const completedTasks = Math.floor(totalTasks * (0.2 + Math.random() * 0.6)); // 20-80% completion rate
-    const inProgressTasks = Math.floor((totalTasks - completedTasks) * 0.6); // 60% of remaining are in progress
-    const pendingTasks = totalTasks - completedTasks - inProgressTasks; // Rest are pending
+    const completedTasks = Math.floor(totalTasks * (0.2 + Math.random() * 0.6));
+    const inProgressTasks = Math.floor((totalTasks - completedTasks) * 0.6);
+    const pendingTasks = totalTasks - completedTasks - inProgressTasks;
     
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     
-    // Create stats object
     const stats = {
       totalTasks,
       completedTasks,
@@ -54,19 +51,16 @@ const EmployeesPage: React.FC = () => {
       completionRate
     };
     
-    // Save to localStorage for persistence
     localStorage.setItem(`employee-stats-${employeeId}`, JSON.stringify(stats));
     
     return stats;
   };
   
-  // Store/update stats when employees or tasks change
   useEffect(() => {
     employees.forEach(employee => {
       const employeeTasks = tasks.filter(task => task.assignee.id === employee.id);
       const totalTasks = employeeTasks.length;
       
-      // Only update if there are actual tasks
       if (totalTasks > 0) {
         const completedTasks = employeeTasks.filter(task => task.status === 'completed').length;
         const inProgressTasks = employeeTasks.filter(task => task.status === 'in-progress').length;
@@ -109,7 +103,7 @@ const EmployeesPage: React.FC = () => {
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {employees.map((employee) => (
-              <div key={employee.id} onClick={() => handleEmployeeClick(employee)}>
+              <div key={employee.id}>
                 <EmployeeCard employee={employee} />
               </div>
             ))}
@@ -227,8 +221,7 @@ const EmployeesPage: React.FC = () => {
         )}
       </div>
       
-      {/* Employee Profile Dialog */}
-      {selectedEmployee && (
+      {selectedEmployee && viewMode === "list" && (
         <EmployeeProfile 
           employee={selectedEmployee}
           isOpen={!!selectedEmployee}

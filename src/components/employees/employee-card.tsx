@@ -70,6 +70,12 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
     }
   };
   
+  // Separate handler for opening the profile to prevent event bubbling issues
+  const handleViewProfile = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event from bubbling up to parent elements
+    setIsProfileOpen(true);
+  };
+  
   return (
     <>
       <Card className="h-full hover:shadow-md transition-shadow duration-300 relative flex flex-col">
@@ -162,7 +168,7 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
           </div>
           
           <div className="mt-4 pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsProfileOpen(true)} className="w-full">
+            <Button variant="outline" onClick={handleViewProfile} className="w-full">
               View Profile
             </Button>
           </div>

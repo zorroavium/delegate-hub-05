@@ -46,7 +46,9 @@ export const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
     'on-leave': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
   };
 
-  const handleEditEmployee = () => {
+  const handleEditEmployee = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    
     // Close the profile dialog
     onClose();
     
