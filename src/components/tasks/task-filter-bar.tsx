@@ -21,6 +21,7 @@ import {
   User
 } from "lucide-react";
 import { Employee } from '@/components/employees/employee-profile';
+import { Avatar } from '@/components/ui/avatar';
 
 interface TaskFilterBarProps {
   selectedPriority: string | null;
@@ -49,6 +50,19 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
     const employee = employees.find(e => e.id === selectedEmployee);
     return employee ? employee.name : null;
   };
+  
+  // Group employees by department
+  const groupedEmployees = employees.reduce((acc, employee) => {
+    const department = employee.department || 'Other';
+    if (!acc[department]) {
+      acc[department] = [];
+    }
+    acc[department].push(employee);
+    return acc;
+  }, {} as Record<string, Employee[]>);
+  
+  // Sort departments alphabetically
+  const departments = Object.keys(groupedEmployees).sort();
   
   return (
     <DropdownMenu>
@@ -102,20 +116,33 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             <span>Assigned to</span>
             {selectedEmployee && <span className="ml-auto text-xs truncate max-w-[80px]">{getSelectedEmployeeName()}</span>}
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
+          <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
             <DropdownMenuItem onClick={() => onEmployeeChange(null)}>
               <span>Show all</span>
               {!selectedEmployee && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {employees.map((employee) => (
-              <DropdownMenuItem key={employee.id} onClick={() => onEmployeeChange(employee.id)}>
-                <div className="flex items-center">
-                  <div className={`w-2 h-2 rounded-full mr-2 ${employee.color || 'bg-primary'}`}></div>
-                  <span>{employee.name}</span>
+            
+            {departments.map(department => (
+              <React.Fragment key={department}>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                  {department}
                 </div>
-                {selectedEmployee === employee.id && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
-              </DropdownMenuItem>
+                {groupedEmployees[department].map((employee) => (
+                  <DropdownMenuItem key={employee.id} onClick={() => onEmployeeChange(employee.id)}>
+                    <div className="flex items-center w-full">
+                      <Avatar className={`h-6 w-6 mr-2 ${employee.color || 'bg-primary'}`}>
+                        <div className="flex items-center justify-center w-full h-full text-white text-xs">
+                          {employee.avatar || employee.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                      </Avatar>
+                      <span className="truncate">{employee.name}</span>
+                      {selectedEmployee === employee.id && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+              </React.Fragment>
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>

@@ -7,12 +7,14 @@ import { useTaskStore } from "@/store/useTaskStore";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, BarChart2, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const EmployeesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
   const { employees } = useEmployeeStore();
   const { tasks } = useTaskStore();
+  const navigate = useNavigate();
   
   const handleEmployeeClick = (employee: any) => {
     setSelectedEmployee(employee);
@@ -88,6 +90,7 @@ const EmployeesPage: React.FC = () => {
                 variant={viewMode === "grid" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
+                className={viewMode === "grid" ? "bg-secondary text-secondary-foreground" : ""}
               >
                 Grid
               </Button>
@@ -95,6 +98,7 @@ const EmployeesPage: React.FC = () => {
                 variant={viewMode === "list" ? "secondary" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode("list")}
+                className={viewMode === "list" ? "bg-secondary text-secondary-foreground" : ""}
               >
                 List
               </Button>
@@ -151,24 +155,42 @@ const EmployeesPage: React.FC = () => {
                     <Progress value={stats.completionRate} className="h-2 mb-3" />
                     
                     <div className="grid grid-cols-3 gap-2 mt-3">
-                      <div className="flex flex-col items-center justify-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                      <div 
+                        className="flex flex-col items-center justify-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/tasks?status=pending&employee=${employee.id}`);
+                        }}
+                      >
                         <div className="flex items-center gap-1 mb-1">
                           <Clock size={14} className="text-blue-500" />
                           <span className="text-xs font-medium text-blue-700 dark:text-blue-300">Pending</span>
                         </div>
                         <span className="text-lg font-bold text-blue-700 dark:text-blue-300">{stats.pendingTasks}</span>
                       </div>
-                      <div className="flex flex-col items-center justify-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
+                      <div 
+                        className="flex flex-col items-center justify-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/tasks?status=in-progress&employee=${employee.id}`);
+                        }}
+                      >
                         <div className="flex items-center gap-1 mb-1">
                           <BarChart2 size={14} className="text-amber-500" />
-                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Active</span>
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">In Progress</span>
                         </div>
                         <span className="text-lg font-bold text-amber-700 dark:text-amber-300">{stats.inProgressTasks}</span>
                       </div>
-                      <div className="flex flex-col items-center justify-center p-2 bg-green-50 dark:bg-green-900/20 rounded-md">
+                      <div 
+                        className="flex flex-col items-center justify-center p-2 bg-green-50 dark:bg-green-900/20 rounded-md cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/tasks?status=completed&employee=${employee.id}`);
+                        }}
+                      >
                         <div className="flex items-center gap-1 mb-1">
                           <CheckCircle size={14} className="text-green-500" />
-                          <span className="text-xs font-medium text-green-700 dark:text-green-300">Done</span>
+                          <span className="text-xs font-medium text-green-700 dark:text-green-300">Completed</span>
                         </div>
                         <span className="text-lg font-bold text-green-700 dark:text-green-300">{stats.completedTasks}</span>
                       </div>
@@ -227,19 +249,37 @@ const EmployeesPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm">
                             <div className="flex items-center gap-2">
-                              <div className="flex gap-1 items-center">
+                              <div 
+                                className="flex gap-1 items-center cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 px-2 py-1 rounded"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/tasks?status=pending&employee=${employee.id}`);
+                                }}
+                              >
                                 <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
                                   {stats.pendingTasks}
                                 </span>
                                 <Clock size={14} className="text-blue-500" />
                               </div>
-                              <div className="flex gap-1 items-center">
+                              <div 
+                                className="flex gap-1 items-center cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2 py-1 rounded"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/tasks?status=in-progress&employee=${employee.id}`);
+                                }}
+                              >
                                 <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                   {stats.inProgressTasks}
                                 </span>
                                 <BarChart2 size={14} className="text-amber-500" />
                               </div>
-                              <div className="flex gap-1 items-center">
+                              <div 
+                                className="flex gap-1 items-center cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30 px-2 py-1 rounded"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/tasks?status=completed&employee=${employee.id}`);
+                                }}
+                              >
                                 <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                                   {stats.completedTasks}
                                 </span>

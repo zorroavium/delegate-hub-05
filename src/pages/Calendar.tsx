@@ -200,7 +200,7 @@ const DisplayMonth = ({ month }: { month: Date }) => (
 
 const CalendarPage = () => {
   const [date, setDate] = useState<Date>(new Date());
-  const [view, setView] = useState('month');
+  const [view, setView] = useState('week');
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const { toast } = useToast();
