@@ -21,6 +21,7 @@ import {
   User
 } from "lucide-react";
 import { Employee } from '@/components/employees/employee-profile';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface TaskFilterBarProps {
   selectedPriority: string | null;
@@ -43,12 +44,13 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
   onClearFilters,
   employees
 }) => {
-  // Get selected employee name
-  const getSelectedEmployeeName = () => {
+  // Get selected employee data
+  const getSelectedEmployee = () => {
     if (!selectedEmployee) return null;
-    const employee = employees.find(e => e.id === selectedEmployee);
-    return employee ? employee.name : null;
+    return employees.find(e => e.id === selectedEmployee);
   };
+  
+  const selectedEmployeeData = getSelectedEmployee();
   
   return (
     <DropdownMenu>
@@ -100,22 +102,56 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
           <DropdownMenuSubTrigger>
             <User size={16} className="mr-2" />
             <span>Assigned to</span>
-            {selectedEmployee && <span className="ml-auto text-xs truncate max-w-[80px]">{getSelectedEmployeeName()}</span>}
+            {selectedEmployeeData && (
+              <div className="ml-auto flex items-center gap-1.5">
+                <Avatar className="h-5 w-5">
+                  <AvatarFallback className={selectedEmployeeData.color}>
+                    {selectedEmployeeData.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            )}
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
+          <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
             <DropdownMenuItem onClick={() => onEmployeeChange(null)}>
               <span>Show all</span>
               {!selectedEmployee && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {employees.map((employee) => (
-              <DropdownMenuItem key={employee.id} onClick={() => onEmployeeChange(employee.id)}>
-                <div className="flex items-center">
-                  <div className={`w-2 h-2 rounded-full mr-2 ${employee.color || 'bg-primary'}`}></div>
-                  <span>{employee.name}</span>
-                </div>
-                {selectedEmployee === employee.id && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
-              </DropdownMenuItem>
+            
+            {/* Group employees by department */}
+            {Object.entries(
+              employees.reduce((acc, employee) => {
+                if (!acc[employee.department]) {
+                  acc[employee.department] = [];
+                }
+                acc[employee.department].push(employee);
+                return acc;
+              }, {} as Record<string, Employee[]>)
+            ).map(([department, deptEmployees]) => (
+              <React.Fragment key={department}>
+                <DropdownMenuItem disabled className="opacity-50 font-medium">
+                  {department}
+                </DropdownMenuItem>
+                
+                {deptEmployees.map((employee) => (
+                  <DropdownMenuItem 
+                    key={employee.id} 
+                    onClick={() => onEmployeeChange(employee.id)}
+                    className="pl-6"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className={employee.color}>
+                          {employee.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{employee.name}</span>
+                    </div>
+                    {selectedEmployee === employee.id && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
+                  </DropdownMenuItem>
+                ))}
+              </React.Fragment>
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
