@@ -1,12 +1,12 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, type DayPickerRootProps } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+export type CalendarProps = DayPickerRootProps & {
   onDayDoubleClick?: (day: Date) => void;
 };
 
@@ -68,23 +68,19 @@ function Calendar({
         Day: ({ date, ...dayProps }) => {
           if (!date) return <div>Invalid Day</div>;
           
-          // Check if the date is disabled, selected, or today
-          // Access these properties safely from dayProps
+          // Use the modifiers object to safely check states
           const modifiers = (dayProps as any).modifiers || {};
-          const isDisabled = modifiers.disabled || false;
-          const isSelected = modifiers.selected || false;
-          const isToday = modifiers.today || false;
           
           return (
             <div
               className={cn(
                 buttonVariants({ variant: "ghost" }),
                 "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                isToday && "bg-accent text-accent-foreground",
-                isDisabled && "text-muted-foreground opacity-50"
+                modifiers.selected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                modifiers.today && "bg-accent text-accent-foreground",
+                modifiers.disabled && "text-muted-foreground opacity-50"
               )}
-              onDoubleClick={() => !isDisabled && handleDayDoubleClick(date)}
+              onDoubleClick={() => !modifiers.disabled && handleDayDoubleClick(date)}
             >
               {date.getDate()}
             </div>

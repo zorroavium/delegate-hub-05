@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -381,6 +380,39 @@ const CalendarPage = () => {
                     onDayClick={(day) => handleDateClick(day)}
                     onDayDoubleClick={handleDayDoubleClick}
                     className="p-3 pointer-events-auto"
+                    components={{
+                      Day: ({ date: dayDate, ...props }) => {
+                        if (!dayDate) return null;
+                        
+                        const dayEvents = events.filter(event => 
+                          isSameDay(parseISO(event.date), dayDate)
+                        );
+                        
+                        return (
+                          <div className="relative">
+                            <div {...props} />
+                            {dayEvents.length > 0 && (
+                              <div className="absolute bottom-0 left-0 w-full flex justify-center">
+                                <div className="flex gap-0.5 mb-0.5">
+                                  {dayEvents.slice(0, 3).map((_, i) => (
+                                    <div
+                                      key={i}
+                                      className={`h-1 w-1 rounded-full ${
+                                        i === 0 ? 'bg-blue-500' : 
+                                        i === 1 ? 'bg-purple-500' : 'bg-green-500'
+                                      }`}
+                                    />
+                                  ))}
+                                  {dayEvents.length > 3 && (
+                                    <div className="h-1 w-1 rounded-full bg-gray-500" />
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                    }}
                   />
                 </div>
               </TabsContent>
@@ -536,7 +568,6 @@ const CalendarPage = () => {
         </div>
       </div>
 
-      {/* Add Event Dialog */}
       <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
@@ -563,7 +594,7 @@ const CalendarPage = () => {
                   control={form.control}
                   name="date"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem className="flex flex-col space-y-1.5">
                       <FormLabel>Date</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -599,11 +630,26 @@ const CalendarPage = () => {
                   control={form.control}
                   name="time"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col space-y-1.5">
                       <FormLabel>Time</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 9:00 AM - 10:00 AM" {...field} />
-                      </FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="9:00 AM - 10:00 AM">9:00 AM - 10:00 AM</SelectItem>
+                          <SelectItem value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</SelectItem>
+                          <SelectItem value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</SelectItem>
+                          <SelectItem value="12:00 PM - 1:00 PM">12:00 PM - 1:00 PM</SelectItem>
+                          <SelectItem value="1:00 PM - 2:00 PM">1:00 PM - 2:00 PM</SelectItem>
+                          <SelectItem value="2:00 PM - 3:00 PM">2:00 PM - 3:00 PM</SelectItem>
+                          <SelectItem value="3:00 PM - 4:00 PM">3:00 PM - 4:00 PM</SelectItem>
+                          <SelectItem value="4:00 PM - 5:00 PM">4:00 PM - 5:00 PM</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )}
                 />

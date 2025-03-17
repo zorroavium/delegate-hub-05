@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ChartNavigation } from '@/components/reports/chart-navigation';
 import { TaskDistributionChart, TeamPerformanceChart } from '@/components/reports/performance-chart';
@@ -14,8 +14,13 @@ import {
   MessageSquare, 
   PlayCircle, 
   FileCheck,
-  ActivitySquare
+  ActivitySquare,
+  TrendingUp,
+  Users,
+  Calendar,
+  Zap
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Reports: React.FC = () => {
   const activities = [
@@ -86,6 +91,24 @@ const Reports: React.FC = () => {
     }
   };
 
+  // Sample data for the productivity trends
+  const productivityData = [
+    { month: 'Jan', tasks: 65, meetings: 12 },
+    { month: 'Feb', tasks: 75, meetings: 18 },
+    { month: 'Mar', tasks: 60, meetings: 15 },
+    { month: 'Apr', tasks: 80, meetings: 21 },
+    { month: 'May', tasks: 90, meetings: 16 },
+    { month: 'Jun', tasks: 85, meetings: 14 },
+  ];
+
+  // Sample data for project status
+  const projectStatus = [
+    { name: 'Website Redesign', progress: 75, color: 'bg-blue-500' },
+    { name: 'Mobile App Development', progress: 45, color: 'bg-purple-500' },
+    { name: 'Marketing Campaign', progress: 90, color: 'bg-green-500' },
+    { name: 'Customer Portal', progress: 30, color: 'bg-amber-500' },
+  ];
+
   return (
     <SidebarLayout>
       <div className="space-y-6">
@@ -94,7 +117,7 @@ const Reports: React.FC = () => {
         </div>
         
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
+          <TabsList className="justify-start">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="team">Team Performance</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
@@ -237,12 +260,12 @@ const Reports: React.FC = () => {
                         <div 
                           key={activity.id} 
                           className={cn(
-                            "p-3 rounded-lg border-l-4 transition-all",
+                            "p-3 rounded-lg border-l-4 transition-all shadow-sm hover:shadow-md",
                             getActivityCardClass(activity.type)
                           )}
                         >
                           <div className="flex items-start gap-3">
-                            <Avatar className={cn("h-8 w-8", activity.user.color)}>
+                            <Avatar className={cn("h-8 w-8 ring-2 ring-white", activity.user.color)}>
                               <div className="flex items-center justify-center w-full h-full text-xs font-medium text-white">
                                 {activity.user.initials}
                               </div>
@@ -251,7 +274,7 @@ const Reports: React.FC = () => {
                               <div className="flex items-center gap-1.5">
                                 {getActivityIcon(activity.type)}
                                 <p className="text-sm font-medium line-clamp-1">
-                                  <span className="font-semibold">{activity.user.name}</span> {activity.action} "{activity.item}"{activity.suffix ? ` ${activity.suffix}` : ''}
+                                  <span className="font-semibold">{activity.user.name}</span> {activity.action} <span className="font-medium">"{activity.item}"</span>{activity.suffix ? ` ${activity.suffix}` : ''}
                                 </p>
                               </div>
                               <div className="flex items-center text-xs text-muted-foreground">
@@ -264,6 +287,9 @@ const Reports: React.FC = () => {
                       ))}
                     </div>
                   </CardContent>
+                  <CardFooter className="border-t pt-4 flex justify-center">
+                    <Button variant="outline" size="sm">View All Activities</Button>
+                  </CardFooter>
                 </Card>
               </div>
             </ChartNavigation>
@@ -271,6 +297,203 @@ const Reports: React.FC = () => {
           
           <TabsContent value="team" className="space-y-4">
             <ChartNavigation>
+              <div className="grid gap-6 md:grid-cols-2 mb-6">
+                <Card className="overflow-hidden border-amber-200 dark:border-amber-800">
+                  <CardHeader className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800/30">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-amber-100 dark:bg-amber-800/30 p-2 rounded-full">
+                        <Calendar className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg text-amber-800 dark:text-amber-400">Team Productivity Trends</CardTitle>
+                        <CardDescription>Monthly task completion metrics</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="h-[300px] flex flex-col">
+                      <div className="flex justify-between mb-4">
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold">85</div>
+                          <div className="text-xs text-muted-foreground">Avg. Tasks/Month</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold">16</div>
+                          <div className="text-xs text-muted-foreground">Avg. Meetings/Month</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold">+12%</div>
+                          <div className="text-xs text-muted-foreground">Productivity Growth</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 flex items-end space-x-2">
+                        {productivityData.map((item) => (
+                          <div key={item.month} className="flex-1 flex flex-col items-center">
+                            <div className="w-full flex flex-col items-center space-y-1">
+                              <div className="w-full bg-blue-100 dark:bg-blue-900/20 rounded-t-sm" 
+                                style={{ height: `${item.tasks * 0.8}px` }} />
+                              <div className="w-full bg-purple-100 dark:bg-purple-900/20 rounded-t-sm" 
+                                style={{ height: `${item.meetings * 2}px` }} />
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-2">{item.month}</div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="flex justify-center space-x-5 mt-4">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-blue-100 dark:bg-blue-900/20 mr-2"></div>
+                          <span className="text-xs">Tasks</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-purple-100 dark:bg-purple-900/20 mr-2"></div>
+                          <span className="text-xs">Meetings</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="overflow-hidden border-purple-200 dark:border-purple-800">
+                  <CardHeader className="bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-800/30">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-purple-100 dark:bg-purple-800/30 p-2 rounded-full">
+                        <Zap className="h-5 w-5 text-purple-700 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg text-purple-800 dark:text-purple-400">Staff Performance</CardTitle>
+                        <CardDescription>Individual contribution metrics</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <div className="text-sm font-medium">Sarah Johnson</div>
+                            <div className="text-sm font-semibold">96%</div>
+                          </div>
+                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+                            <div className="h-full bg-purple-500 rounded-full" style={{ width: '96%' }}></div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <div className="text-sm font-medium">Mike Anderson</div>
+                            <div className="text-sm font-semibold">82%</div>
+                          </div>
+                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+                            <div className="h-full bg-purple-500 rounded-full" style={{ width: '82%' }}></div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <div className="text-sm font-medium">Emily Chen</div>
+                            <div className="text-sm font-semibold">91%</div>
+                          </div>
+                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+                            <div className="h-full bg-purple-500 rounded-full" style={{ width: '91%' }}></div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <div className="text-sm font-medium">Alex Thompson</div>
+                            <div className="text-sm font-semibold">75%</div>
+                          </div>
+                          <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+                            <div className="h-full bg-purple-500 rounded-full" style={{ width: '75%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-4">Project Progress</h4>
+                        <div className="space-y-4">
+                          {projectStatus.map((project) => (
+                            <div key={project.name} className="space-y-2">
+                              <div className="flex justify-between">
+                                <div className="text-sm">{project.name}</div>
+                                <div className="text-sm font-medium">{project.progress}%</div>
+                              </div>
+                              <div className="h-2 w-full bg-muted overflow-hidden rounded-full">
+                                <div className={`h-full ${project.color} rounded-full`} style={{ width: `${project.progress}%` }}></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <Card className="border-green-200 dark:border-green-800 overflow-hidden">
+                <CardHeader className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800/30">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-green-100 dark:bg-green-800/30 p-2 rounded-full">
+                      <Users className="h-5 w-5 text-green-700 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg text-green-800 dark:text-green-400">Departmental Performance</CardTitle>
+                      <CardDescription>Efficiency metrics by department</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex flex-col items-center p-4 border rounded-lg bg-green-50/50 dark:bg-green-900/10">
+                      <div className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">Marketing</div>
+                      <div className="text-3xl font-bold">87%</div>
+                      <div className="text-sm text-muted-foreground mb-4">Completion Rate</div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-green-500 rounded-full" style={{ width: '87%' }}></div>
+                      </div>
+                      <div className="mt-4 text-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp size={14} className="text-green-500" />
+                          <span>+12% from previous quarter</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-lg bg-blue-50/50 dark:bg-blue-900/10">
+                      <div className="text-xl font-bold text-blue-700 dark:text-blue-400 mb-1">Engineering</div>
+                      <div className="text-3xl font-bold">92%</div>
+                      <div className="text-sm text-muted-foreground mb-4">Completion Rate</div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500 rounded-full" style={{ width: '92%' }}></div>
+                      </div>
+                      <div className="mt-4 text-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp size={14} className="text-green-500" />
+                          <span>+8% from previous quarter</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-lg bg-purple-50/50 dark:bg-purple-900/10">
+                      <div className="text-xl font-bold text-purple-700 dark:text-purple-400 mb-1">Design</div>
+                      <div className="text-3xl font-bold">78%</div>
+                      <div className="text-sm text-muted-foreground mb-4">Completion Rate</div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-500 rounded-full" style={{ width: '78%' }}></div>
+                      </div>
+                      <div className="mt-4 text-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <TrendingUp size={14} className="text-green-500" />
+                          <span>+5% from previous quarter</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
               <TeamPerformanceChart />
             </ChartNavigation>
           </TabsContent>
