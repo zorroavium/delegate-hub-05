@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   Users,
   ArrowUpRight
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, isToday } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -35,7 +35,6 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useEmployeeStore } from "@/store/useEmployeeStore";
 
-// Base event type
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -51,7 +50,6 @@ export interface CalendarEvent {
   description?: string;
 }
 
-// Form schema for event creation
 const eventSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
@@ -65,7 +63,6 @@ const eventSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
-// Event Card Component
 const EventCard = ({ event }: { event: CalendarEvent }) => {
   const eventTypeColors = {
     task: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500',
@@ -109,7 +106,6 @@ const EventCard = ({ event }: { event: CalendarEvent }) => {
   );
 };
 
-// Day Cell Component
 const DayCell = ({ date, events }: { date: Date; events: any[] }) => {
   const dayEvents = events.filter(event => isSameDay(parseISO(event.date), date));
   
@@ -130,12 +126,11 @@ const DayCell = ({ date, events }: { date: Date; events: any[] }) => {
   );
 };
 
-// Initial mock events
 const initialEvents: CalendarEvent[] = [
   {
     id: '1',
     title: 'Website Content Update',
-    date: '2023-06-15',
+    date: format(new Date(), 'yyyy-MM-dd'),
     time: '10:00 AM - 11:30 AM',
     type: 'task',
     assignees: [
@@ -145,7 +140,7 @@ const initialEvents: CalendarEvent[] = [
   {
     id: '2',
     title: 'Quarterly Report Meeting',
-    date: '2023-06-16',
+    date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     time: '2:00 PM - 3:30 PM',
     type: 'meeting',
     assignees: [
@@ -205,18 +200,19 @@ const CalendarPage = () => {
   const { toast } = useToast();
   const { employees } = useEmployeeStore();
   
-  // Calculate week interval
   const weekStart = startOfWeek(date);
   const weekEnd = endOfWeek(date);
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
   
-  // Filter events for the current week
+  const getDayEvents = () => {
+    return events.filter(event => isSameDay(parseISO(event.date), date));
+  };
+  
   const currentWeekEvents = events.filter(event => {
     const eventDate = parseISO(event.date);
     return eventDate >= weekStart && eventDate <= weekEnd;
   });
   
-  // Filter events for upcoming
   const upcomingEvents = events
     .filter(event => {
       const eventDate = parseISO(event.date);
@@ -225,7 +221,6 @@ const CalendarPage = () => {
     .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
     .slice(0, 5);
   
-  // Group events by day for week view
   const eventsByDay = weekDays.map(day => {
     return {
       date: day,
@@ -233,7 +228,6 @@ const CalendarPage = () => {
     };
   });
   
-  // Form for adding new events
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
@@ -246,26 +240,21 @@ const CalendarPage = () => {
     },
   });
   
-  // Handle calendar date click (for day view)
   const handleDateClick = (selectedDate: Date) => {
     setDate(selectedDate);
     setView('day');
   };
   
-  // Handle opening event dialog with pre-selected date
   const handleAddEventWithDate = (selectedDate: Date) => {
     form.setValue('date', selectedDate);
     setIsAddEventOpen(true);
   };
   
-  // Handle calendar day double click
   const handleDayDoubleClick = (day: Date) => {
     handleAddEventWithDate(day);
   };
   
-  // Create a new event
   const onSubmit = (data: EventFormValues) => {
-    // Map assigneeIds to assignee objects
     const assignees = data.assigneeIds.map(id => {
       const employee = employees.find(e => e.id === id);
       return {
@@ -276,7 +265,6 @@ const CalendarPage = () => {
       };
     });
     
-    // Create new event
     const newEvent: CalendarEvent = {
       id: Date.now().toString(),
       title: data.title,
@@ -287,28 +275,31 @@ const CalendarPage = () => {
       assignees,
     };
     
-    // Add to events array
-    setEvents([...events, newEvent]);
+    setEvents(prev => [...prev, newEvent]);
     
-    // Close dialog and show toast
     setIsAddEventOpen(false);
     toast({
       title: "Event Added",
       description: `"${data.title}" has been scheduled for ${format(data.date, 'MMM dd, yyyy')}`
     });
     
-    // Reset form
     form.reset();
   };
   
-  // Handle Google Calendar integration
+  const teamAvailability = employees.map(emp => ({
+    id: emp.id,
+    name: emp.name,
+    avatar: emp.avatar || emp.name.split(' ').map(n => n[0]).join(''),
+    color: emp.color || 'bg-gray-500',
+    status: Math.random() > 0.3 ? 'active' : (Math.random() > 0.5 ? 'inactive' : 'away')
+  })).slice(0, 4);
+  
   const handleGoogleCalendarConnect = () => {
     toast({
       title: "Google Calendar Integration",
       description: "Connecting to Google Calendar...",
     });
     
-    // Simulating a connection process
     setTimeout(() => {
       toast({
         title: "Connected Successfully",
@@ -440,7 +431,9 @@ const CalendarPage = () => {
               <TabsContent value="day">
                 <div className="rounded-md border p-4">
                   <div className="text-center mb-4">
-                    <h3 className="text-lg font-medium">{format(date, 'EEEE, MMMM d, yyyy')}</h3>
+                    <h3 className="text-lg font-medium">{format(date, 'EEEE, MMMM d, yyyy')} 
+                      {isToday(date) && <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Today</span>}
+                    </h3>
                   </div>
                   
                   <div className="space-y-4">
@@ -458,13 +451,11 @@ const CalendarPage = () => {
                       </Button>
                     </div>
                     
-                    {events
-                      .filter(event => isSameDay(parseISO(event.date), date))
-                      .map(event => (
-                        <EventCard key={event.id} event={event} />
-                      ))}
+                    {getDayEvents().map(event => (
+                      <EventCard key={event.id} event={event} />
+                    ))}
                     
-                    {!events.some(event => isSameDay(parseISO(event.date), date)) && (
+                    {getDayEvents().length === 0 && (
                       <div className="text-center py-8 text-muted-foreground">
                         <p>No events scheduled for today</p>
                         <Button variant="outline" className="mt-2" onClick={() => handleAddEventWithDate(date)}>
@@ -515,12 +506,12 @@ const CalendarPage = () => {
                 </div>
                 
                 <div className="space-y-3">
-                  {employees.slice(0, 4).map((employee) => (
+                  {teamAvailability.map((employee) => (
                     <div key={employee.id} className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <Avatar className={`h-8 w-8 ${employee.color || 'bg-gray-500'}`}>
+                        <Avatar className={`h-8 w-8 ${employee.color}`}>
                           <div className="flex items-center justify-center w-full h-full text-white">
-                            {employee.avatar || employee.name.split(' ').map(n => n[0]).join('')}
+                            {employee.avatar}
                           </div>
                         </Avatar>
                         <span className="text-sm font-medium">{employee.name}</span>
@@ -544,180 +535,5 @@ const CalendarPage = () => {
         </div>
       </div>
 
-      {/* Add Event Dialog */}
-      <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Add New Event</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Event title" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Event description" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                            className={cn("p-3 pointer-events-auto")}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="time"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Time</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select time" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="9:00 AM - 10:00 AM">9:00 AM - 10:00 AM</SelectItem>
-                          <SelectItem value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</SelectItem>
-                          <SelectItem value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</SelectItem>
-                          <SelectItem value="12:00 PM - 1:00 PM">12:00 PM - 1:00 PM</SelectItem>
-                          <SelectItem value="1:00 PM - 2:00 PM">1:00 PM - 2:00 PM</SelectItem>
-                          <SelectItem value="2:00 PM - 3:00 PM">2:00 PM - 3:00 PM</SelectItem>
-                          <SelectItem value="3:00 PM - 4:00 PM">3:00 PM - 4:00 PM</SelectItem>
-                          <SelectItem value="4:00 PM - 5:00 PM">4:00 PM - 5:00 PM</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Event Type</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select event type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="task">Task</SelectItem>
-                        <SelectItem value="deadline">Deadline</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="assigneeIds"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assignees</FormLabel>
-                    <div className="space-y-2">
-                      {employees.map((employee) => (
-                        <div key={employee.id} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id={`employee-${employee.id}`}
-                            checked={field.value.includes(employee.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                field.onChange([...field.value, employee.id]);
-                              } else {
-                                field.onChange(field.value.filter(id => id !== employee.id));
-                              }
-                            }}
-                            className="h-4 w-4 rounded border-gray-300"
-                          />
-                          <label htmlFor={`employee-${employee.id}`} className="text-sm">
-                            {employee.name}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </FormItem>
-                )}
-              />
-              
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddEventOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Create Event</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-    </SidebarLayout>
-  );
-};
+      <
 
-export default CalendarPage;

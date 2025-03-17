@@ -76,26 +76,24 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
             {task.description}
           </p>
 
-          {/* Unassigned ribbon or progress bar */}
+          {/* Unassigned badge or progress bar */}
           <div className="flex justify-between items-center">
             {isUnassigned() ? (
               <div className="flex items-center">
-                <div className="relative">
-                  <Badge 
-                    variant="outline" 
-                    className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 flex items-center gap-1.5 border-gray-300"
-                  >
-                    <UserX size={14} />
-                    Unassigned
-                  </Badge>
-                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-medium px-1.5 rounded-full">
-                    NEW
-                  </div>
+                <Badge 
+                  variant="outline" 
+                  className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 flex items-center gap-1.5 border-gray-300"
+                >
+                  <UserX size={14} />
+                  Unassigned
+                </Badge>
+                <div className="ml-2 bg-red-500 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                  NEW
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <div className="flex-1 max-w-24">
+              <div className="flex items-center gap-3 w-full">
+                <div className="flex-1">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs font-medium">{task.progress}%</span>
                   </div>

@@ -56,12 +56,6 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
     navigate(`/tasks?status=${status}&employee=${employee.id}`);
   };
   
-  // Status colors
-  const statusColors: Record<string, string> = {};
-  statuses.forEach(status => {
-    statusColors[status.id] = status.color;
-  });
-  
   return (
     <>
       <Card className="h-full hover:shadow-md transition-shadow duration-300 relative">
@@ -120,12 +114,11 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
               indicatorClassName={completionPercentage === 100 ? "bg-status-completed" : undefined} />
             
             <div className="flex flex-wrap gap-2 mt-4">
-              {/* Only show statuses with tasks, sorted by order */}
+              {/* Show all statuses with their counts, sorted by order */}
               {statuses
                 .sort((a, b) => a.order - b.order)
                 .map(status => {
                   const count = taskCountByStatus[status.id] || 0;
-                  if (count === 0) return null;
                   
                   return (
                     <button

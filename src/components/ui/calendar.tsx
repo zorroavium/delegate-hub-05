@@ -25,27 +25,23 @@ function Calendar({
   }, [onDayDoubleClick]);
 
   // Custom day renderer to add double-click event
-  const renderDay = React.useCallback((dayProps: DayProps) => {
-    const { date: day, modifiers } = dayProps;
+  const renderDay = React.useCallback((props: DayProps) => {
+    const { date, disabled, selected, today } = props;
     
-    if (!day) return <div>Invalid Day</div>;
-    
-    const isSelected = !!modifiers?.selected;
-    const isToday = !!modifiers?.today;
-    const isDisabled = !!modifiers?.disabled;
+    if (!date) return <div>Invalid Day</div>;
     
     return (
       <div
         className={cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-          isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-          isToday && "bg-accent text-accent-foreground",
-          isDisabled && "text-muted-foreground opacity-50"
+          selected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          today && "bg-accent text-accent-foreground",
+          disabled && "text-muted-foreground opacity-50"
         )}
-        onDoubleClick={() => !isDisabled && handleDayDoubleClick(day)}
+        onDoubleClick={() => !disabled && handleDayDoubleClick(date)}
       >
-        {day.getDate()}
+        {date.getDate()}
       </div>
     );
   }, [handleDayDoubleClick]);
@@ -53,7 +49,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
+      className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
