@@ -4,12 +4,13 @@ import { SidebarLayout } from '@/components/layout/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { BarChart, PieChart, Calendar, Download, FileDown, Filter } from 'lucide-react';
+import { BarChart, PieChart, Calendar, FileDown, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { AIInsights } from '@/components/reports/ai-insights';
+import { TaskDistributionChart, TeamPerformanceChart } from '@/components/reports/performance-chart';
 
 const ReportsPage = () => {
   const { toast } = useToast();
@@ -17,8 +18,11 @@ const ReportsPage = () => {
   const { employees } = useEmployeeStore();
   const [dateRange, setDateRange] = useState('month');
   const [reportType, setReportType] = useState('performance');
+  const [exportFormat, setExportFormat] = useState<string | null>(null);
   
   const handleExport = (format: string) => {
+    setExportFormat(format);
+    
     toast({
       title: `Report exported as ${format.toUpperCase()}`,
       description: `Your report has been downloaded in ${format.toUpperCase()} format.`
@@ -78,16 +82,17 @@ const ReportsPage = () => {
               </SelectContent>
             </Select>
             
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                className="flex items-center" 
-                onClick={() => handleExport('pdf')}
-              >
+            <Select onValueChange={handleExport} defaultValue="">
+              <SelectTrigger className="w-[140px]">
                 <FileDown className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-            </div>
+                <SelectValue placeholder="Export" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pdf">Export as PDF</SelectItem>
+                <SelectItem value="csv">Export as CSV</SelectItem>
+                <SelectItem value="xlsx">Export as Excel</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
@@ -162,47 +167,11 @@ const ReportsPage = () => {
           </TabsList>
           
           <TabsContent value="overview" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tasks Overview</CardTitle>
-                <CardDescription>
-                  Task distribution across different statuses and priorities
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                <div className="flex h-full items-center justify-center border border-dashed rounded-md">
-                  <div className="text-center">
-                    <BarChart size={48} className="mx-auto text-muted-foreground" />
-                    <p className="mt-2 font-medium">Task Distribution Chart</p>
-                    <p className="text-sm text-muted-foreground">
-                      This would display a chart showing task distribution by status
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <TaskDistributionChart />
           </TabsContent>
           
           <TabsContent value="performance" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Team Performance</CardTitle>
-                <CardDescription>
-                  Productivity and efficiency metrics by team member and department
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                <div className="flex h-full items-center justify-center border border-dashed rounded-md">
-                  <div className="text-center">
-                    <PieChart size={48} className="mx-auto text-muted-foreground" />
-                    <p className="mt-2 font-medium">Performance Metrics</p>
-                    <p className="text-sm text-muted-foreground">
-                      This would display charts showing team performance metrics
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <TeamPerformanceChart />
           </TabsContent>
           
           <TabsContent value="ai-insights">
