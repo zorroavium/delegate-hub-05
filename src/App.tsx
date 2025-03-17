@@ -99,6 +99,7 @@ function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/notifications" element={<Notifications />} />
+            {/* This is the catch-all route for 404 errors */}
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
