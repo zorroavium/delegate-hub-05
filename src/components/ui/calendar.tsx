@@ -65,19 +65,26 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-        Day: ({ date, disabled, selected, ...dayProps }) => {
+        Day: (dayProps) => {
+          // Extract the date from day props
+          const { date, displayMonth } = dayProps;
           if (!date) return <div>Invalid Day</div>;
+          
+          // Check if the date is disabled based on the modifiers
+          const isDisabled = dayProps.modifiers?.disabled || false;
+          const isSelected = dayProps.modifiers?.selected || false;
+          const isToday = dayProps.modifiers?.today || false;
           
           return (
             <div
               className={cn(
                 buttonVariants({ variant: "ghost" }),
                 "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                selected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                dayProps.today && "bg-accent text-accent-foreground",
-                disabled && "text-muted-foreground opacity-50"
+                isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                isToday && "bg-accent text-accent-foreground",
+                isDisabled && "text-muted-foreground opacity-50"
               )}
-              onDoubleClick={() => !disabled && handleDayDoubleClick(date)}
+              onDoubleClick={() => !isDisabled && handleDayDoubleClick(date)}
             >
               {date.getDate()}
             </div>
