@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useEmployeeStore } from '@/store/useEmployeeStore';
+import { useEmployeeStore, Employee } from '@/store/useEmployeeStore';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Trash, Plus } from 'lucide-react';
 
@@ -24,9 +24,9 @@ export const EmployeeManagement = () => {
     email: '',
     role: '',
     department: '',
-    status: 'active',
+    status: 'active' as 'active' | 'inactive' | 'on-leave',
     phone: '',
-    skills: [],
+    skills: [] as string[],
     avatar: '',
     color: 'bg-blue-500',
     location: '',
@@ -112,9 +112,9 @@ export const EmployeeManagement = () => {
       email: '',
       role: '',
       department: '',
-      status: 'active',
+      status: 'active' as 'active' | 'inactive' | 'on-leave',
       phone: '',
-      skills: [],
+      skills: [] as string[],
       avatar: '',
       color: 'bg-blue-500',
       location: '',
