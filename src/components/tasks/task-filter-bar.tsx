@@ -141,7 +141,7 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
                     </div>
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuSeparator />
+                {department !== departments[departments.length - 1] && <DropdownMenuSeparator />}
               </React.Fragment>
             ))}
           </DropdownMenuSubContent>

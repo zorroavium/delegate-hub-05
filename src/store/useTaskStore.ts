@@ -1,6 +1,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useEmployeeStore } from './useEmployeeStore';
 
 // Mock data for initial store
 const tasksMock = [
@@ -13,15 +14,15 @@ const tasksMock = [
     dueDate: '2023-06-15',
     progress: 60,
     assignee: {
-      id: '1', // Updated to match employee store ID
+      id: '1', // Fixed ID to match employee store
       name: 'Sarah Johnson',
       avatar: 'SJ',
-      color: 'bg-purple-500' // Updated to match employee color
+      color: 'bg-purple-500' // Fixed color to match employee store
     },
     activities: [
       {
         id: '101',
-        userId: '1', // Updated to match employee store ID
+        userId: '1', // Fixed ID to match employee store
         userName: 'Sarah Johnson',
         userAvatar: 'SJ',
         action: 'created this task',
@@ -38,7 +39,7 @@ const tasksMock = [
     dueDate: '2023-06-30',
     progress: 20,
     assignee: {
-      id: '4', // Updated to match employee store ID (David Wilson)
+      id: '4', // Fixed ID to match employee store (David Wilson)
       name: 'David Wilson',
       avatar: 'DW',
       color: 'bg-green-500'
@@ -46,7 +47,7 @@ const tasksMock = [
     activities: [
       {
         id: '201',
-        userId: '4', // Updated to match employee store ID
+        userId: '4', // Fixed ID to match employee store
         userName: 'David Wilson',
         userAvatar: 'DW',
         action: 'created this task',
@@ -63,7 +64,7 @@ const tasksMock = [
     dueDate: '2023-06-10',
     progress: 0,
     assignee: {
-      id: '7', // Updated to match employee store ID (Sophia Martinez)
+      id: '7', // Fixed ID to match employee store (Sophia Martinez)
       name: 'Sophia Martinez',
       avatar: 'SM',
       color: 'bg-pink-500'
@@ -71,7 +72,7 @@ const tasksMock = [
     activities: [
       {
         id: '301',
-        userId: '7', // Updated to match employee store ID
+        userId: '7', // Fixed ID to match employee store
         userName: 'Sophia Martinez',
         userAvatar: 'SM',
         action: 'created this task',
@@ -88,7 +89,7 @@ const tasksMock = [
     dueDate: '2023-06-05',
     progress: 100,
     assignee: {
-      id: '6', // Updated to match employee store ID (Robert Taylor)
+      id: '6', // Fixed ID to match employee store (Robert Taylor)
       name: 'Robert Taylor',
       avatar: 'RT',
       color: 'bg-red-500'
@@ -96,7 +97,7 @@ const tasksMock = [
     activities: [
       {
         id: '401',
-        userId: '6', // Updated to match employee store ID
+        userId: '6', // Fixed ID to match employee store
         userName: 'Robert Taylor',
         userAvatar: 'RT',
         action: 'created this task',
@@ -104,7 +105,7 @@ const tasksMock = [
       },
       {
         id: '402',
-        userId: '6', // Updated to match employee store ID
+        userId: '6', // Fixed ID to match employee store
         userName: 'Robert Taylor',
         userAvatar: 'RT',
         action: 'marked as completed',
@@ -121,15 +122,15 @@ const tasksMock = [
     dueDate: '2023-06-20',
     progress: 40,
     assignee: {
-      id: '1', // Updated to match employee store ID
+      id: '1', // Fixed ID to match employee store
       name: 'Sarah Johnson',
       avatar: 'SJ',
-      color: 'bg-purple-500' // Updated to match employee color
+      color: 'bg-purple-500' // Fixed color to match employee store
     },
     activities: [
       {
         id: '501',
-        userId: '1', // Updated to match employee store ID
+        userId: '1', // Fixed ID to match employee store
         userName: 'Sarah Johnson',
         userAvatar: 'SJ',
         action: 'created this task',
@@ -137,7 +138,7 @@ const tasksMock = [
       },
       {
         id: '502',
-        userId: '4', // Updated to match employee store ID (David Wilson)
+        userId: '4', // Fixed ID to match employee store (David Wilson)
         userName: 'David Wilson',
         userAvatar: 'DW',
         action: 'changed status from Pending to In Progress',
@@ -154,7 +155,7 @@ const tasksMock = [
     dueDate: '2023-06-01',
     progress: 100,
     assignee: {
-      id: '2', // Updated to match employee store ID (Michael Chen)
+      id: '2', // Fixed ID to match employee store (Michael Chen)
       name: 'Michael Chen',
       avatar: 'MC',
       color: 'bg-blue-500'
@@ -162,7 +163,7 @@ const tasksMock = [
     activities: [
       {
         id: '601',
-        userId: '2', // Updated to match employee store ID
+        userId: '2', // Fixed ID to match employee store
         userName: 'Michael Chen',
         userAvatar: 'MC',
         action: 'created this task',
@@ -170,7 +171,7 @@ const tasksMock = [
       },
       {
         id: '602',
-        userId: '2', // Updated to match employee store ID
+        userId: '2', // Fixed ID to match employee store
         userName: 'Michael Chen',
         userAvatar: 'MC',
         action: 'marked as completed',
@@ -212,8 +213,9 @@ interface TaskStore {
   getTaskById: (id: string) => Task | undefined;
   addTask: (task: Task) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void; // Added this function to the interface
+  deleteTask: (id: string) => void;
   addActivity: (taskId: string, activity: Omit<TaskActivity, 'id'>) => void;
+  syncTaskAssignees: () => void; // Added new function to sync task assignees with employee data
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -239,7 +241,6 @@ export const useTaskStore = create<TaskStore>()(
         }));
       },
       
-      // Add the deleteTask implementation
       deleteTask: (id: string) => {
         set(state => ({
           tasks: state.tasks.filter(task => task.id !== id)
@@ -259,11 +260,58 @@ export const useTaskStore = create<TaskStore>()(
               : task
           )
         }));
+      },
+      
+      // New function to sync task assignees with employee data
+      syncTaskAssignees: () => {
+        const employees = useEmployeeStore.getState().employees;
+        
+        set(state => ({
+          tasks: state.tasks.map(task => {
+            // Find the employee by name (more reliable than ID in this case)
+            const matchedEmployee = employees.find(emp => 
+              emp.name.toLowerCase() === task.assignee.name.toLowerCase()
+            );
+            
+            // If we found a matching employee, update the assignee info
+            if (matchedEmployee) {
+              return {
+                ...task,
+                assignee: {
+                  id: matchedEmployee.id,
+                  name: matchedEmployee.name,
+                  avatar: matchedEmployee.avatar,
+                  color: matchedEmployee.color
+                },
+                // Also update activities to use the correct employee ID
+                activities: task.activities.map(activity => {
+                  if (activity.userName.toLowerCase() === matchedEmployee.name.toLowerCase()) {
+                    return {
+                      ...activity,
+                      userId: matchedEmployee.id
+                    };
+                  }
+                  return activity;
+                })
+              };
+            }
+            
+            return task;
+          })
+        }));
       }
     }),
     {
       name: 'task-storage',
-      storage: createJSONStorage(() => localStorage), // Using localStorage as a fallback if IndexedDB is not available
+      storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (state) {
+            // Sync task assignees with employee data after rehydration
+            state.syncTaskAssignees();
+          }
+        };
+      }
     }
   )
 );

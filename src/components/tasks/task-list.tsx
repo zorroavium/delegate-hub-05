@@ -22,12 +22,12 @@ export const TaskList: React.FC<TaskListProps> = ({
   }
   
   return (
-    <Grid columns={{ default: 1, sm: 2, lg: 3 }} gap={6}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {tasks.map(task => (
-        <div key={task.id} className="w-full h-full">
-          <EnhancedTaskCard task={task} className="h-full" />
+        <div key={task.id} className="flex">
+          <EnhancedTaskCard task={task} className="w-full" />
         </div>
       ))}
-    </Grid>
+    </div>
   );
 };
