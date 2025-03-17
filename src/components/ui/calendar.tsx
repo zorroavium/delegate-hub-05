@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker, DayProps } from "react-day-picker";
+import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -23,28 +23,6 @@ function Calendar({
       onDayDoubleClick(day);
     }
   }, [onDayDoubleClick]);
-
-  // Custom day renderer to add double-click event
-  const renderDay = React.useCallback((props: DayProps) => {
-    const { date, disabled, selected, today } = props;
-    
-    if (!date) return <div>Invalid Day</div>;
-    
-    return (
-      <div
-        className={cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-          selected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-          today && "bg-accent text-accent-foreground",
-          disabled && "text-muted-foreground opacity-50"
-        )}
-        onDoubleClick={() => !disabled && handleDayDoubleClick(date)}
-      >
-        {date.getDate()}
-      </div>
-    );
-  }, [handleDayDoubleClick]);
 
   return (
     <DayPicker
@@ -87,7 +65,24 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-        Day: renderDay
+        Day: ({ date, disabled, selected, ...dayProps }) => {
+          if (!date) return <div>Invalid Day</div>;
+          
+          return (
+            <div
+              className={cn(
+                buttonVariants({ variant: "ghost" }),
+                "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+                selected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                dayProps.today && "bg-accent text-accent-foreground",
+                disabled && "text-muted-foreground opacity-50"
+              )}
+              onDoubleClick={() => !disabled && handleDayDoubleClick(date)}
+            >
+              {date.getDate()}
+            </div>
+          );
+        }
       }}
       {...props}
     />
