@@ -56,6 +56,11 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
     navigate(`/tasks?status=${status}&employee=${employee.id}`);
   };
   
+  // Find our main statuses to ensure consistent display
+  const pendingStatus = statuses.find(s => s.id === 'pending');
+  const inProgressStatus = statuses.find(s => s.id === 'in-progress');
+  const completedStatus = statuses.find(s => s.id === 'completed');
+  
   return (
     <>
       <Card className="h-full hover:shadow-md transition-shadow duration-300 relative">
@@ -110,27 +115,40 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
               <span className="text-sm font-medium">Task Completion</span>
               <span className="text-sm font-medium">{completionPercentage}%</span>
             </div>
-            <Progress value={completionPercentage} className="h-2 mb-3" 
+            <Progress value={completionPercentage} className="h-2 mb-4" 
               indicatorClassName={completionPercentage === 100 ? "bg-status-completed" : undefined} />
             
-            <div className="flex flex-wrap gap-2 mt-4">
-              {/* Show all statuses with their counts, sorted by order */}
-              {statuses
-                .sort((a, b) => a.order - b.order)
-                .map(status => {
-                  const count = taskCountByStatus[status.id] || 0;
-                  
-                  return (
-                    <button
-                      key={status.id}
-                      onClick={() => handleStatusClick(status.id)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md bg-accent/20 hover:bg-accent/40 transition-colors text-xs"
-                    >
-                      <div className={`w-2 h-2 rounded-full ${status.color}`}></div>
-                      <span>{status.name}: {count}</span>
-                    </button>
-                  );
-                })}
+            <div className="grid grid-cols-3 gap-2 w-full">
+              {/* Always show these three key statuses in a consistent order */}
+              <button
+                onClick={() => handleStatusClick('pending')}
+                className="flex flex-col items-center justify-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+              >
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Pending</span>
+                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                  {taskCountByStatus['pending'] || 0}
+                </span>
+              </button>
+              
+              <button
+                onClick={() => handleStatusClick('in-progress')}
+                className="flex flex-col items-center justify-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+              >
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-300 mb-1">In Progress</span>
+                <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                  {taskCountByStatus['in-progress'] || 0}
+                </span>
+              </button>
+              
+              <button
+                onClick={() => handleStatusClick('completed')}
+                className="flex flex-col items-center justify-center p-2 bg-green-50 dark:bg-green-900/20 rounded-md hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+              >
+                <span className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Completed</span>
+                <span className="text-lg font-bold text-green-700 dark:text-green-300">
+                  {taskCountByStatus['completed'] || 0}
+                </span>
+              </button>
             </div>
           </div>
           

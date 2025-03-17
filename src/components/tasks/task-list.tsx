@@ -2,7 +2,6 @@
 import React from 'react';
 import { Task } from '@/store/useTaskStore';
 import { EnhancedTaskCard } from '@/components/tasks/enhanced-task-card';
-import { Grid } from '@/components/ui/grid';
 
 interface TaskListProps {
   tasks: Task[];
@@ -24,8 +23,8 @@ export const TaskList: React.FC<TaskListProps> = ({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {tasks.map(task => (
-        <div key={task.id} className="flex">
-          <EnhancedTaskCard task={task} className="w-full" />
+        <div key={task.id} className="h-full">
+          <EnhancedTaskCard task={task} className="h-full" />
         </div>
       ))}
     </div>
