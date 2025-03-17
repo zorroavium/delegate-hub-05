@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,7 +130,7 @@ const DayCell = ({ date, events }: { date: Date; events: any[] }) => {
   );
 };
 
-// Mock events initially, will be replaced with state
+// Initial mock events
 const initialEvents: CalendarEvent[] = [
   {
     id: '1',
@@ -425,7 +424,7 @@ const CalendarPage = () => {
                               className="text-xs p-1 rounded bg-blue-50 dark:bg-blue-900/20 truncate cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30"
                             >
                               <div className="flex items-center gap-1">
-                                <div className={`h-2 w-2 rounded-full ${event.type === 'task' ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
+                                <div className={`h-2 w-2 rounded-full ${event.type === 'task' ? 'bg-blue-500' : event.type === 'meeting' ? 'bg-purple-500' : 'bg-red-500'}`}></div>
                                 <span>{event.title}</span>
                               </div>
                               <div className="text-[10px] text-muted-foreground mt-0.5">{event.time}</div>
@@ -520,9 +519,9 @@ const CalendarPage = () => {
                     <div key={employee.id} className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <Avatar className={`h-8 w-8 ${employee.color || 'bg-gray-500'}`}>
-                          <span className="text-xs text-white">
+                          <div className="flex items-center justify-center w-full h-full text-white">
                             {employee.avatar || employee.name.split(' ').map(n => n[0]).join('')}
-                          </span>
+                          </div>
                         </Avatar>
                         <span className="text-sm font-medium">{employee.name}</span>
                       </div>
@@ -625,9 +624,26 @@ const CalendarPage = () => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Time</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 9:00 AM - 10:30 AM" {...field} />
-                      </FormControl>
+                      <Select 
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select time" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="9:00 AM - 10:00 AM">9:00 AM - 10:00 AM</SelectItem>
+                          <SelectItem value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</SelectItem>
+                          <SelectItem value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</SelectItem>
+                          <SelectItem value="12:00 PM - 1:00 PM">12:00 PM - 1:00 PM</SelectItem>
+                          <SelectItem value="1:00 PM - 2:00 PM">1:00 PM - 2:00 PM</SelectItem>
+                          <SelectItem value="2:00 PM - 3:00 PM">2:00 PM - 3:00 PM</SelectItem>
+                          <SelectItem value="3:00 PM - 4:00 PM">3:00 PM - 4:00 PM</SelectItem>
+                          <SelectItem value="4:00 PM - 5:00 PM">4:00 PM - 5:00 PM</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )}
                 />

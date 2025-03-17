@@ -51,10 +51,6 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
     ? Math.round((completedTasks / employeeTasks.length) * 100) 
     : 0;
     
-  const pendingTasks = taskCountByStatus['pending'] || 0;
-  const inProgressTasks = taskCountByStatus['in-progress'] || 0;
-  const completedTasksCount = taskCountByStatus['completed'] || 0;
-  
   // Handle status click to navigate to filtered tasks
   const handleStatusClick = (status: string) => {
     navigate(`/tasks?status=${status}&employee=${employee.id}`);
@@ -68,29 +64,27 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
   
   return (
     <>
-      <Card className="h-full hover:shadow-md transition-shadow duration-300">
+      <Card className="h-full hover:shadow-md transition-shadow duration-300 relative">
+        {/* Employee status badge in top-right */}
+        <div className="absolute top-2 right-2">
+          <Badge className={
+            employee.status === 'active' 
+              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+              : employee.status === 'inactive'
+              ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+              : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+          }>
+            {employee.status === 'on-leave' ? 'On Leave' : employee.status}
+          </Badge>
+        </div>
+        
         <CardContent className="p-5">
-          {/* Employee status badge in top-right */}
-          <div className="absolute top-2 right-2">
-            <Badge className={
-              employee.status === 'active' 
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                : employee.status === 'inactive'
-                ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
-                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
-            }>
-              {employee.status === 'on-leave' ? 'On Leave' : employee.status}
-            </Badge>
-          </div>
-          
           {/* Employee header */}
           <div className="flex items-center gap-4 mb-4">
             <Avatar className={`h-12 w-12 ${employee.color || 'bg-primary'}`}>
-              {employee.avatar ? (
-                <span className="text-white">{employee.avatar}</span>
-              ) : (
-                <span className="text-white">{employee.name.split(' ').map(n => n[0]).join('')}</span>
-              )}
+              <div className="flex items-center justify-center w-full h-full text-white">
+                {employee.avatar || employee.name.split(' ').map(n => n[0]).join('')}
+              </div>
             </Avatar>
             <div>
               <h3 className="font-semibold text-lg">{employee.name}</h3>
@@ -124,7 +118,7 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
             </div>
             
             <div className="flex flex-wrap gap-2">
-              {/* Only show the main statuses, sorted by order */}
+              {/* Only show statuses with tasks, sorted by order */}
               {statuses
                 .sort((a, b) => a.order - b.order)
                 .map(status => {

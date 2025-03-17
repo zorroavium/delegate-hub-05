@@ -18,10 +18,13 @@ export const ClickableBar: React.FC<ClickableBarProps> = ({
   ...props 
 }) => {
   const handleClick = (data: any) => {
+    // Ensure payload data has proper name formatting
+    const payload = data.payload;
+    
     // Dispatch custom event with payload data
     const event = new CustomEvent('chart-click', {
       detail: {
-        payload: data.payload,
+        payload,
         dataKey
       }
     });

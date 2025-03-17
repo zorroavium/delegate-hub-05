@@ -1,3 +1,4 @@
+
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
@@ -5,14 +6,46 @@ import { DayPicker } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  onDayDoubleClick?: (day: Date) => void;
+};
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  onDayDoubleClick,
   ...props
 }: CalendarProps) {
+  // Handle double click on days
+  const handleDayDoubleClick = React.useCallback((day: Date) => {
+    if (onDayDoubleClick) {
+      onDayDoubleClick(day);
+    }
+  }, [onDayDoubleClick]);
+
+  // Custom day renderer to add double-click event
+  const renderDay = React.useCallback((day: Date, modifiers: Record<string, boolean>) => {
+    const isSelected = modifiers.selected;
+    const isToday = modifiers.today;
+    const isDisabled = modifiers.disabled;
+    
+    return (
+      <div
+        className={cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
+          isSelected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          isToday && "bg-accent text-accent-foreground",
+          isDisabled && "text-muted-foreground opacity-50"
+        )}
+        onDoubleClick={() => !isDisabled && handleDayDoubleClick(day)}
+      >
+        {day.getDate()}
+      </div>
+    );
+  }, [handleDayDoubleClick]);
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -54,6 +87,7 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        Day: renderDay
       }}
       {...props}
     />

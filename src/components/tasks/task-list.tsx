@@ -15,7 +15,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 }) => {
   if (tasks.length === 0) {
     return (
-      <div className="col-span-full py-10 text-center">
+      <div className="col-span-full py-12 text-center">
         <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     );

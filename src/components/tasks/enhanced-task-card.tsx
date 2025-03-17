@@ -88,7 +88,7 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
                     <UserX size={14} />
                     Unassigned
                   </Badge>
-                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1 rounded-sm">
+                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-medium px-1.5 rounded-full">
                     NEW
                   </div>
                 </div>
@@ -101,7 +101,7 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
                   className={task.status === 'completed' ? 'text-status-completed' : ''}
                 />
                 <Avatar className="h-8 w-8 border border-border">
-                  <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
+                  <div className="flex items-center justify-center w-full h-full text-xs font-medium bg-primary text-primary-foreground">
                     {task.assignee.name.split(' ').map(n => n[0]).join('')}
                   </div>
                 </Avatar>
@@ -111,10 +111,10 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
             {/* Priority badge */}
             <div className="flex items-center">
               <div className={cn(
-                "py-0.5 px-2 text-xs font-medium flex items-center gap-1.5 border",
+                "py-0.5 px-2.5 text-xs font-medium rounded border",
                 getTaskPriorityClass(task.priority)
               )}>
-                {task.priority === 'high' && <AlertTriangle size={12} className="text-red-600 dark:text-red-400" />}
+                {task.priority === 'high' && <AlertTriangle size={12} className="inline mr-1 text-red-600 dark:text-red-400" />}
                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
               </div>
             </div>
@@ -134,9 +134,9 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
 
             {/* Status badge */}
             <Badge 
-              variant="secondary"
+              variant="outline"
               className={cn(
-                'rounded-full text-xs',
+                'font-medium text-xs px-2 py-0.5',
                 getStatusClassName(task.status)
               )}
             >

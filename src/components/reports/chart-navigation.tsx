@@ -14,7 +14,7 @@ export const ChartNavigation: React.FC<ChartNavigationProps> = ({ children }) =>
     
     if (dataKey === 'tasks' && payload && payload.name) {
       // Convert chart label to status ID (e.g. "In Progress" -> "in-progress")
-      const statusId = payload.name.toLowerCase().replace(' ', '-');
+      const statusId = payload.name.toLowerCase().replace(/ /g, '-');
       navigate(`/tasks?status=${statusId}`);
     }
     
