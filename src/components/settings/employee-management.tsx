@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Edit, Trash, Plus } from 'lucide-react';
 
 export const EmployeeManagement = () => {
-  const { employees, addEmployee, updateEmployee, deleteEmployee } = useEmployeeStore();
+  const { employees, addEmployee, updateEmployee, removeEmployee } = useEmployeeStore();
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -28,11 +28,12 @@ export const EmployeeManagement = () => {
     phone: '',
     skills: [],
     avatar: '',
-    color: 'bg-blue-500'
+    color: 'bg-blue-500',
+    location: '',
+    joinDate: new Date().toISOString().split('T')[0]
   });
 
   const handleAddEmployee = () => {
-    const id = Date.now().toString();
     const avatarInitials = newEmployee.name
       .split(' ')
       .map(name => name[0])
@@ -41,7 +42,6 @@ export const EmployeeManagement = () => {
 
     const employee = {
       ...newEmployee,
-      id,
       avatar: avatarInitials,
     };
 
@@ -68,7 +68,7 @@ export const EmployeeManagement = () => {
   const handleDeleteEmployee = () => {
     if (!selectedEmployee) return;
 
-    deleteEmployee(selectedEmployee.id);
+    removeEmployee(selectedEmployee.id);
     toast({
       title: "Employee removed",
       description: `${selectedEmployee.name} has been removed from the team.`,
@@ -116,7 +116,9 @@ export const EmployeeManagement = () => {
       phone: '',
       skills: [],
       avatar: '',
-      color: 'bg-blue-500'
+      color: 'bg-blue-500',
+      location: '',
+      joinDate: new Date().toISOString().split('T')[0]
     });
   };
 
@@ -290,7 +292,7 @@ export const EmployeeManagement = () => {
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="on-leave">On Leave</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -302,6 +304,26 @@ export const EmployeeManagement = () => {
                     value={newEmployee.phone}
                     onChange={handleInputChange}
                     placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={newEmployee.location}
+                    onChange={handleInputChange}
+                    placeholder="New York, NY"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="joinDate">Join Date</Label>
+                  <Input
+                    id="joinDate"
+                    name="joinDate"
+                    type="date"
+                    value={newEmployee.joinDate}
+                    onChange={handleInputChange}
                   />
                 </div>
               </div>
@@ -413,7 +435,7 @@ export const EmployeeManagement = () => {
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="on-leave">On Leave</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -423,6 +445,25 @@ export const EmployeeManagement = () => {
                       id="edit-phone"
                       name="phone"
                       value={selectedEmployee.phone}
+                      onChange={handleEditInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-location">Location</Label>
+                    <Input
+                      id="edit-location"
+                      name="location"
+                      value={selectedEmployee.location}
+                      onChange={handleEditInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-joinDate">Join Date</Label>
+                    <Input
+                      id="edit-joinDate"
+                      name="joinDate"
+                      type="date"
+                      value={selectedEmployee.joinDate?.split('T')[0]}
                       onChange={handleEditInputChange}
                     />
                   </div>
