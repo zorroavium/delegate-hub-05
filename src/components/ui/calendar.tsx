@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, DayProps } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -25,10 +25,14 @@ function Calendar({
   }, [onDayDoubleClick]);
 
   // Custom day renderer to add double-click event
-  const renderDay = React.useCallback((day: Date, modifiers: Record<string, boolean>) => {
-    const isSelected = modifiers.selected;
-    const isToday = modifiers.today;
-    const isDisabled = modifiers.disabled;
+  const renderDay = React.useCallback((dayProps: DayProps) => {
+    const { date: day, displayMonth, activeModifiers } = dayProps;
+    
+    if (!day) return <div>Invalid Day</div>;
+    
+    const isSelected = !!activeModifiers.selected;
+    const isToday = !!activeModifiers.today;
+    const isDisabled = !!activeModifiers.disabled;
     
     return (
       <div
