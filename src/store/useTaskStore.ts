@@ -212,6 +212,7 @@ interface TaskStore {
   getTaskById: (id: string) => Task | undefined;
   addTask: (task: Task) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
+  deleteTask: (id: string) => void; // Added this function to the interface
   addActivity: (taskId: string, activity: Omit<TaskActivity, 'id'>) => void;
 }
 
@@ -235,6 +236,13 @@ export const useTaskStore = create<TaskStore>()(
           tasks: state.tasks.map(task => 
             task.id === id ? { ...task, ...updates } : task
           )
+        }));
+      },
+      
+      // Add the deleteTask implementation
+      deleteTask: (id: string) => {
+        set(state => ({
+          tasks: state.tasks.filter(task => task.id !== id)
         }));
       },
       

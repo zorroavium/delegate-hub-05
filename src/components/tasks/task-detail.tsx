@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStatusStore } from '@/store/useStatusStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button'; // Added Button import
 import {
   DropdownMenu,
   DropdownMenuContent,
