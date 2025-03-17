@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -14,8 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Edit, Trash, Plus, ArrowUpDown, Search, UserPlus, DownloadCloud, Filter } from 'lucide-react';
 import { z } from 'zod';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-// Define validation schema
 const employeeSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
@@ -30,6 +29,12 @@ const employeeSchema = z.object({
 
 type SortField = 'name' | 'role' | 'department' | 'status' | 'joinDate';
 type SortDirection = 'asc' | 'desc';
+
+const departmentColors = {
+  'Leadership': 'bg-purple-600 text-white',
+  'Operations': 'bg-blue-600 text-white',
+  'Audit & Assurance': 'bg-emerald-600 text-white',
+};
 
 export const EmployeeManagement = () => {
   const { employees, addEmployee, updateEmployee, removeEmployee } = useEmployeeStore();
@@ -61,11 +66,9 @@ export const EmployeeManagement = () => {
     joinDate: new Date().toISOString().split('T')[0]
   });
 
-  // Sort and filter employees
   const filteredEmployees = useMemo(() => {
     let result = [...employees];
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(employee => 
@@ -75,17 +78,14 @@ export const EmployeeManagement = () => {
       );
     }
     
-    // Apply department filter
     if (filterDepartment !== "all") {
       result = result.filter(employee => employee.department === filterDepartment);
     }
     
-    // Apply status filter
     if (filterStatus !== "all") {
       result = result.filter(employee => employee.status === filterStatus);
     }
     
-    // Apply sorting
     result.sort((a, b) => {
       let comparison = 0;
       
@@ -261,7 +261,10 @@ export const EmployeeManagement = () => {
   };
 
   const handleSkillsChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
-    const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(Boolean);
+    const skillsArray = e.target.value
+      .split(',')
+      .map(skill => skill.trim())
+      .filter(Boolean);
     
     if (isEdit && selectedEmployee) {
       setSelectedEmployee(prev => ({
@@ -279,7 +282,6 @@ export const EmployeeManagement = () => {
   const exportToCSV = () => {
     const headers = ["Name", "Role", "Department", "Email", "Status", "Join Date"];
     
-    // Convert the employee data to CSV rows
     const csvRows = [
       headers.join(','),
       ...filteredEmployees.map(employee => [
@@ -292,12 +294,10 @@ export const EmployeeManagement = () => {
       ].join(','))
     ];
     
-    // Create a Blob with the CSV content
     const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
-    // Create a link to download the CSV file
     const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', 'employees.csv');
@@ -322,7 +322,6 @@ export const EmployeeManagement = () => {
     });
   };
 
-  // Get status badge color
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
       case 'active':
@@ -336,29 +335,10 @@ export const EmployeeManagement = () => {
     }
   };
 
-  // Get the avatar background color
-  const getAvatarColor = (color: string) => {
-    switch (color) {
-      case 'bg-blue-500':
-        return 'bg-blue-500 text-white';
-      case 'bg-green-500':
-        return 'bg-green-500 text-white';
-      case 'bg-purple-500':
-        return 'bg-purple-500 text-white';
-      case 'bg-red-500':
-        return 'bg-red-500 text-white';
-      case 'bg-yellow-500':
-        return 'bg-yellow-500 text-white';
-      case 'bg-indigo-500':
-        return 'bg-indigo-500 text-white';
-      case 'bg-pink-500':
-        return 'bg-pink-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
-    }
+  const getAvatarColor = (employee: any) => {
+    return departmentColors[employee.department as keyof typeof departmentColors] || 'bg-gray-600 text-white';
   };
 
-  // Get sorted employees
   const getSortIcon = (field: SortField) => {
     if (sortConfig.field !== field) return <ArrowUpDown size={14} className="ml-1 opacity-50" />;
     return sortConfig.direction === 'asc' 
@@ -398,7 +378,6 @@ export const EmployeeManagement = () => {
         </div>
       </CardHeader>
       <CardContent className="pt-6">
-        {/* Filters and Search */}
         <div className="mb-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -439,7 +418,6 @@ export const EmployeeManagement = () => {
           </div>
         </div>
 
-        {/* Table with enhanced UI */}
         <div className="rounded-md border overflow-hidden shadow-sm">
           <Table>
             <TableHeader className="bg-gray-50 dark:bg-gray-800">
@@ -482,7 +460,7 @@ export const EmployeeManagement = () => {
                 <TableRow key={employee.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/20">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
-                      <Avatar className={getAvatarColor(employee.color)}>
+                      <Avatar className={getAvatarColor(employee)}>
                         <AvatarFallback>{employee.avatar}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
@@ -493,7 +471,10 @@ export const EmployeeManagement = () => {
                   </TableCell>
                   <TableCell>{employee.role}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="font-normal">
+                    <Badge 
+                      variant="outline" 
+                      className={`font-normal ${departmentColors[employee.department as keyof typeof departmentColors]?.replace('bg-', 'bg-opacity-20 text-').replace('text-white', '') || ''}`}
+                    >
                       {employee.department}
                     </Badge>
                   </TableCell>
@@ -528,7 +509,7 @@ export const EmployeeManagement = () => {
               {filteredEmployees.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
-                    {searchQuery || filterDepartment || filterStatus ? 
+                    {searchQuery || filterDepartment !== "all" || filterStatus !== "all" ? 
                       "No employees match the current filters" :
                       "No employees found"}
                   </TableCell>
@@ -542,7 +523,6 @@ export const EmployeeManagement = () => {
           Showing {filteredEmployees.length} of {employees.length} employees
         </div>
 
-        {/* Add Employee Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
@@ -552,7 +532,7 @@ export const EmployeeManagement = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
                   <Input
@@ -675,8 +655,8 @@ export const EmployeeManagement = () => {
                 <Input
                   id="skills"
                   name="skills"
-                  value={Array.isArray(newEmployee.skills) ? newEmployee.skills.join(', ') : ''}
-                  onChange={(e) => handleSkillsChange(e)}
+                  value={newEmployee.skills.join(', ')}
+                  onChange={handleSkillsChange}
                   placeholder="Auditing, Tax Planning, Financial Analysis"
                 />
                 <p className="text-xs text-muted-foreground">Separate multiple skills with commas</p>
@@ -696,7 +676,6 @@ export const EmployeeManagement = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Employee Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
@@ -707,7 +686,7 @@ export const EmployeeManagement = () => {
             </DialogHeader>
             {selectedEmployee && (
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Full Name <span className="text-red-500">*</span></Label>
                     <Input
@@ -845,7 +824,6 @@ export const EmployeeManagement = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Employee Dialog */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -856,7 +834,7 @@ export const EmployeeManagement = () => {
             </DialogHeader>
             {selectedEmployee && (
               <div className="py-6 flex flex-col items-center justify-center">
-                <Avatar className={`h-16 w-16 ${getAvatarColor(selectedEmployee.color)}`}>
+                <Avatar className={getAvatarColor(selectedEmployee)}>
                   <AvatarFallback className="text-xl">{selectedEmployee.avatar}</AvatarFallback>
                 </Avatar>
                 <p className="text-center mt-4 font-medium text-lg">{selectedEmployee.name}</p>
