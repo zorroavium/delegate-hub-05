@@ -192,6 +192,12 @@ const initialEvents: CalendarEvent[] = [
   },
 ];
 
+const DisplayMonth = ({ month }: { month: Date }) => (
+  <div className="text-center mb-4">
+    <h3 className="text-lg font-medium">{format(month, 'MMMM yyyy')}</h3>
+  </div>
+);
+
 const CalendarPage = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [view, setView] = useState('month');
@@ -380,39 +386,6 @@ const CalendarPage = () => {
                     onDayClick={(day) => handleDateClick(day)}
                     onDayDoubleClick={handleDayDoubleClick}
                     className="p-3 pointer-events-auto"
-                    components={{
-                      Day: ({ date: dayDate, ...props }) => {
-                        if (!dayDate) return null;
-                        
-                        const dayEvents = events.filter(event => 
-                          isSameDay(parseISO(event.date), dayDate)
-                        );
-                        
-                        return (
-                          <div className="relative">
-                            <div {...props} />
-                            {dayEvents.length > 0 && (
-                              <div className="absolute bottom-0 left-0 w-full flex justify-center">
-                                <div className="flex gap-0.5 mb-0.5">
-                                  {dayEvents.slice(0, 3).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className={`h-1 w-1 rounded-full ${
-                                        i === 0 ? 'bg-blue-500' : 
-                                        i === 1 ? 'bg-purple-500' : 'bg-green-500'
-                                      }`}
-                                    />
-                                  ))}
-                                  {dayEvents.length > 3 && (
-                                    <div className="h-1 w-1 rounded-full bg-gray-500" />
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-                    }}
                   />
                 </div>
               </TabsContent>
@@ -463,11 +436,7 @@ const CalendarPage = () => {
               
               <TabsContent value="day">
                 <div className="rounded-md border p-4">
-                  <div className="text-center mb-4">
-                    <h3 className="text-lg font-medium">{format(date, 'EEEE, MMMM d, yyyy')} 
-                      {isToday(date) && <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Today</span>}
-                    </h3>
-                  </div>
+                  <DisplayMonth month={date} />
                   
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">

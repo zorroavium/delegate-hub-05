@@ -10,7 +10,11 @@ import {
   Legend,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  LineChart,
+  Line,
+  AreaChart,
+  Area
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTaskStore } from '@/store/useTaskStore';
@@ -21,11 +25,51 @@ import { useNavigate } from 'react-router-dom';
 // Colors for the charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
+// Sample data for when actual task data is not available
+const sampleTaskStatusData = [
+  { name: 'Pending', tasks: 8, originalStatus: 'pending' },
+  { name: 'In Progress', tasks: 5, originalStatus: 'in-progress' },
+  { name: 'Completed', tasks: 12, originalStatus: 'completed' },
+  { name: 'Cancelled', tasks: 3, originalStatus: 'cancelled' }
+];
+
+const sampleTaskPriorityData = [
+  { name: 'High', tasks: 7, originalPriority: 'high' },
+  { name: 'Medium', tasks: 12, originalPriority: 'medium' },
+  { name: 'Low', tasks: 9, originalPriority: 'low' }
+];
+
+// Sample employee performance data
+const sampleEmployeeData = [
+  { name: 'Sarah Johnson', assigned: 12, completed: 9, employeeId: '101' },
+  { name: 'Mike Anderson', assigned: 8, completed: 5, employeeId: '102' },
+  { name: 'Emily Chen', assigned: 10, completed: 8, employeeId: '103' },
+  { name: 'Alex Thompson', assigned: 7, completed: 4, employeeId: '104' }
+];
+
+// Sample department performance data
+const sampleDepartmentData = [
+  { name: 'Marketing', completionRate: 75, tasksCompleted: 15, totalTasks: 20 },
+  { name: 'Engineering', completionRate: 82, tasksCompleted: 23, totalTasks: 28 },
+  { name: 'Design', completionRate: 65, tasksCompleted: 13, totalTasks: 20 },
+  { name: 'Product', completionRate: 90, tasksCompleted: 18, totalTasks: 20 }
+];
+
+// Sample productivity trend data over time
+const productivityTrendData = [
+  { month: 'Jan', tasks: 20, completion: 65 },
+  { month: 'Feb', tasks: 25, completion: 70 },
+  { month: 'Mar', tasks: 18, completion: 60 },
+  { month: 'Apr', tasks: 27, completion: 75 },
+  { month: 'May', tasks: 32, completion: 80 },
+  { month: 'Jun', tasks: 30, completion: 78 }
+];
+
 export const TaskDistributionChart = () => {
   const { tasks } = useTaskStore();
   const navigate = useNavigate();
   
-  // Calculate task distribution by status
+  // Calculate task distribution by status with fallback to sample data
   const getTasksByStatus = () => {
     const statusCount: { [key: string]: number } = {};
     
@@ -37,23 +81,19 @@ export const TaskDistributionChart = () => {
       }
     });
     
-    // Ensure we always have some data for demonstration
+    // If no real data, use sample data
     if (Object.keys(statusCount).length === 0) {
-      return [
-        { name: 'Pending', tasks: 5, originalStatus: 'pending' },
-        { name: 'In Progress', tasks: 3, originalStatus: 'in-progress' },
-        { name: 'Completed', tasks: 2, originalStatus: 'completed' }
-      ];
+      return sampleTaskStatusData;
     }
     
     return Object.keys(statusCount).map(status => ({
       name: status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' '),
       tasks: statusCount[status],
-      originalStatus: status // Keep the original status ID for navigation
+      originalStatus: status
     }));
   };
   
-  // Calculate task distribution by priority
+  // Calculate task distribution by priority with fallback to sample data
   const getTasksByPriority = () => {
     const priorityCount: { [key: string]: number } = {};
     
@@ -65,19 +105,15 @@ export const TaskDistributionChart = () => {
       }
     });
     
-    // Ensure we always have some data for demonstration
+    // If no real data, use sample data
     if (Object.keys(priorityCount).length === 0) {
-      return [
-        { name: 'High', tasks: 3, originalPriority: 'high' },
-        { name: 'Medium', tasks: 5, originalPriority: 'medium' },
-        { name: 'Low', tasks: 2, originalPriority: 'low' }
-      ];
+      return sampleTaskPriorityData;
     }
     
     return Object.keys(priorityCount).map(priority => ({
       name: priority.charAt(0).toUpperCase() + priority.slice(1),
       tasks: priorityCount[priority],
-      originalPriority: priority // Keep the original priority for navigation
+      originalPriority: priority
     }));
   };
   
@@ -164,6 +200,39 @@ export const TaskDistributionChart = () => {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+      
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Task Productivity Trends</CardTitle>
+          <CardDescription>Monthly task and completion rate trends</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={productivityTrendData}
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                </linearGradient>
+                <linearGradient id="colorCompletion" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Area type="monotone" dataKey="tasks" stroke="#8884d8" fillOpacity={1} fill="url(#colorTasks)" />
+              <Area type="monotone" dataKey="completion" stroke="#82ca9d" fillOpacity={1} fill="url(#colorCompletion)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -173,13 +242,13 @@ export const TeamPerformanceChart = () => {
   const { employees } = useEmployeeStore();
   const navigate = useNavigate();
   
-  // Calculate tasks completed by each employee
+  // Get task data by employee with fallback to sample data
   const getTasksByEmployee = () => {
     const employeeTaskCount: { [key: string]: number } = {};
     const employeeCompletedCount: { [key: string]: number } = {};
     const employeeIds: { [key: string]: string } = {};
     
-    // First count actual tasks
+    // Count actual tasks
     tasks.forEach(task => {
       if (task.assignee?.name && task.assignee?.id && task.assignee.id !== 'unassigned') {
         const employeeName = task.assignee.name;
@@ -203,14 +272,9 @@ export const TeamPerformanceChart = () => {
       }
     });
     
-    // Check if we have any data, if not use sample data
+    // If no real data, use sample data
     if (Object.keys(employeeTaskCount).length === 0) {
-      return [
-        { name: 'Sarah Johnson', assigned: 8, completed: 5, employeeId: '101' },
-        { name: 'Mike Anderson', assigned: 6, completed: 3, employeeId: '102' },
-        { name: 'Emily Chen', assigned: 7, completed: 6, employeeId: '103' },
-        { name: 'Alex Thompson', assigned: 5, completed: 2, employeeId: '104' }
-      ];
+      return sampleEmployeeData;
     }
     
     return Object.keys(employeeTaskCount)
@@ -224,7 +288,7 @@ export const TeamPerformanceChart = () => {
       .slice(0, 5); // Get top 5 employees by task count
   };
   
-  // Calculate average completion rate by department
+  // Get department performance data with fallback to sample data
   const getPerformanceByDepartment = () => {
     const departmentMap: Record<string, { totalTasks: number, completedTasks: number }> = {};
     
@@ -235,14 +299,9 @@ export const TeamPerformanceChart = () => {
       }
     });
     
-    // Check if we have any departments, if not use sample data
+    // If no departments, use sample data
     if (Object.keys(departmentMap).length === 0) {
-      return [
-        { name: 'Marketing', completionRate: 75 },
-        { name: 'Engineering', completionRate: 60 },
-        { name: 'Design', completionRate: 85 },
-        { name: 'Product', completionRate: 50 }
-      ];
+      return sampleDepartmentData;
     }
     
     // Count tasks by department
@@ -259,12 +318,24 @@ export const TeamPerformanceChart = () => {
       }
     });
     
-    return Object.keys(departmentMap).map(dept => ({
-      name: dept,
-      completionRate: departmentMap[dept].totalTasks > 0 
-        ? Math.round((departmentMap[dept].completedTasks / departmentMap[dept].totalTasks) * 100) 
-        : 0
-    }));
+    // Map departments to chart data format
+    const deptData = Object.keys(departmentMap).map(dept => {
+      const totalTasks = departmentMap[dept].totalTasks;
+      const completedTasks = departmentMap[dept].completedTasks;
+      const completionRate = totalTasks > 0 
+        ? Math.round((completedTasks / totalTasks) * 100) 
+        : 0;
+      
+      return {
+        name: dept,
+        completionRate: completionRate,
+        tasksCompleted: completedTasks,
+        totalTasks: totalTasks
+      };
+    });
+    
+    // If no calculated data, return sample data
+    return deptData.length > 0 ? deptData : sampleDepartmentData;
   };
   
   const tasksByEmployee = getTasksByEmployee();
@@ -330,6 +401,38 @@ export const TeamPerformanceChart = () => {
               <Legend />
               <ClickableBar dataKey="completionRate" fill="#82ca9d" name="Completion Rate (%)" />
             </RechartsBarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+      
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Employee Efficiency Matrix</CardTitle>
+          <CardDescription>Task completion efficiency by employee over time</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={[
+                { name: 'Week 1', Sarah: 85, Mike: 72, Emily: 90, Alex: 67 },
+                { name: 'Week 2', Sarah: 87, Mike: 76, Emily: 92, Alex: 70 },
+                { name: 'Week 3', Sarah: 89, Mike: 78, Emily: 88, Alex: 73 },
+                { name: 'Week 4', Sarah: 84, Mike: 80, Emily: 91, Alex: 76 },
+                { name: 'Week 5', Sarah: 88, Mike: 79, Emily: 94, Alex: 78 },
+                { name: 'Week 6', Sarah: 90, Mike: 82, Emily: 93, Alex: 81 }
+              ]}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis unit="%" />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Sarah" stroke="#8884d8" activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="Mike" stroke="#82ca9d" activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="Emily" stroke="#ffc658" activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="Alex" stroke="#ff7300" activeDot={{ r: 8 }} />
+            </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
