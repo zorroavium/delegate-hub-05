@@ -26,13 +26,13 @@ function Calendar({
 
   // Custom day renderer to add double-click event
   const renderDay = React.useCallback((dayProps: DayProps) => {
-    const { date: day, displayMonth, activeModifiers } = dayProps;
+    const { date: day, modifiers } = dayProps;
     
     if (!day) return <div>Invalid Day</div>;
     
-    const isSelected = !!activeModifiers.selected;
-    const isToday = !!activeModifiers.today;
-    const isDisabled = !!activeModifiers.disabled;
+    const isSelected = !!modifiers?.selected;
+    const isToday = !!modifiers?.today;
+    const isDisabled = !!modifiers?.disabled;
     
     return (
       <div

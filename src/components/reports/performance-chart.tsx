@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   BarChart as RechartsBarChart, 
   XAxis, 
@@ -16,12 +16,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useTaskStore } from '@/store/useTaskStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { ClickableBar } from './clickable-bar';
+import { useNavigate } from 'react-router-dom';
 
 // Colors for the charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export const TaskDistributionChart = () => {
   const { tasks } = useTaskStore();
+  const navigate = useNavigate();
   
   // Calculate task distribution by status
   const getTasksByStatus = () => {
@@ -63,6 +65,25 @@ export const TaskDistributionChart = () => {
   
   const tasksByStatus = getTasksByStatus();
   const tasksByPriority = getTasksByPriority();
+  
+  // Handle chart clicks to navigate to filtered tasks
+  useEffect(() => {
+    const handleChartClick = (event: CustomEvent) => {
+      const { payload, dataKey } = event.detail;
+      
+      if (dataKey === 'tasks' && payload.originalStatus) {
+        navigate(`/tasks?status=${payload.originalStatus}`);
+      } else if (dataKey === 'priority' && payload.name) {
+        navigate(`/tasks?priority=${payload.name.toLowerCase()}`);
+      }
+    };
+    
+    document.addEventListener('chart-click', handleChartClick as EventListener);
+    
+    return () => {
+      document.removeEventListener('chart-click', handleChartClick as EventListener);
+    };
+  }, [navigate]);
   
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -132,6 +153,7 @@ export const TaskDistributionChart = () => {
 export const TeamPerformanceChart = () => {
   const { tasks } = useTaskStore();
   const { employees } = useEmployeeStore();
+  const navigate = useNavigate();
   
   // Calculate tasks completed by each employee
   const getTasksByEmployee = () => {
@@ -143,19 +165,21 @@ export const TeamPerformanceChart = () => {
       const employeeName = task.assignee.name;
       const employeeId = task.assignee.id;
       
-      employeeIds[employeeName] = employeeId;
-      
-      if (employeeTaskCount[employeeName]) {
-        employeeTaskCount[employeeName]++;
-      } else {
-        employeeTaskCount[employeeName] = 1;
-      }
-      
-      if (task.status === 'completed') {
-        if (employeeCompletedCount[employeeName]) {
-          employeeCompletedCount[employeeName]++;
+      if (employeeId && employeeId !== 'unassigned') {
+        employeeIds[employeeName] = employeeId;
+        
+        if (employeeTaskCount[employeeName]) {
+          employeeTaskCount[employeeName]++;
         } else {
-          employeeCompletedCount[employeeName] = 1;
+          employeeTaskCount[employeeName] = 1;
+        }
+        
+        if (task.status === 'completed') {
+          if (employeeCompletedCount[employeeName]) {
+            employeeCompletedCount[employeeName]++;
+          } else {
+            employeeCompletedCount[employeeName] = 1;
+          }
         }
       }
     });
@@ -205,17 +229,24 @@ export const TeamPerformanceChart = () => {
   const performanceByDepartment = getPerformanceByDepartment();
   
   // Handle click on employee bar to navigate to their tasks
-  const handleEmployeeClick = (data: any) => {
-    if (data.payload && data.payload.employeeId) {
-      const event = new CustomEvent('chart-click', {
-        detail: {
-          payload: { name: data.payload.employeeId },
-          dataKey: 'employee'
-        }
-      });
-      document.dispatchEvent(event);
-    }
-  };
+  useEffect(() => {
+    const handleChartClick = (event: CustomEvent) => {
+      const { payload, dataKey } = event.detail;
+      
+      if (payload && payload.employeeId) {
+        navigate(`/tasks?employee=${payload.employeeId}`);
+      }
+    };
+    
+    document.addEventListener('chart-click', handleChartClick as EventListener);
+    
+    return () => {
+      document.removeEventListener('chart-click', handleChartClick as EventListener);
+    };
+  }, [navigate]);
+  
+  console.log('Employee tasks data:', tasksByEmployee);
+  console.log('Department performance data:', performanceByDepartment);
   
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -225,20 +256,26 @@ export const TeamPerformanceChart = () => {
           <CardDescription>Assigned vs completed tasks per employee. Click on a bar to see their tasks.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <RechartsBarChart
-              data={tasksByEmployee}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <ClickableBar dataKey="assigned" fill="#8884d8" name="Tasks Assigned" onClick={handleEmployeeClick} />
-              <ClickableBar dataKey="completed" fill="#82ca9d" name="Tasks Completed" onClick={handleEmployeeClick} />
-            </RechartsBarChart>
-          </ResponsiveContainer>
+          {tasksByEmployee.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsBarChart
+                data={tasksByEmployee}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <ClickableBar dataKey="assigned" fill="#8884d8" name="Tasks Assigned" />
+                <ClickableBar dataKey="completed" fill="#82ca9d" name="Tasks Completed" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No task data available for employees</p>
+            </div>
+          )}
         </CardContent>
       </Card>
       
@@ -248,19 +285,25 @@ export const TeamPerformanceChart = () => {
           <CardDescription>Task completion rate per department. Click on a bar to see department tasks.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <RechartsBarChart
-              data={performanceByDepartment}
-              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis unit="%" />
-              <Tooltip formatter={(value) => [`${value}%`, 'Completion Rate']} />
-              <Legend />
-              <ClickableBar dataKey="completionRate" fill="#82ca9d" name="Completion Rate (%)" />
-            </RechartsBarChart>
-          </ResponsiveContainer>
+          {performanceByDepartment.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsBarChart
+                data={performanceByDepartment}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis unit="%" />
+                <Tooltip formatter={(value) => [`${value}%`, 'Completion Rate']} />
+                <Legend />
+                <ClickableBar dataKey="completionRate" fill="#82ca9d" name="Completion Rate (%)" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No department performance data available</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

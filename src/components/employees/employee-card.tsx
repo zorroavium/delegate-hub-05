@@ -9,7 +9,7 @@ import { EmployeeProfile, Employee } from '@/components/employees/employee-profi
 import { useNavigate } from 'react-router-dom';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useStatusStore } from '@/store/useStatusStore';
-import { CircleProgress } from '@/components/ui/circle-progress';
+import { Progress } from '@/components/ui/progress';
 
 interface EmployeeCardProps {
   employee: Employee;
@@ -114,10 +114,12 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({ employee }) => {
           <div className="border-t pt-4 mt-4">
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-medium">Task Completion</span>
-              <CircleProgress value={completionPercentage} size="small" />
+              <span className="text-sm font-medium">{completionPercentage}%</span>
             </div>
+            <Progress value={completionPercentage} className="h-2 mb-3" 
+              indicatorClassName={completionPercentage === 100 ? "bg-status-completed" : undefined} />
             
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mt-4">
               {/* Only show statuses with tasks, sorted by order */}
               {statuses
                 .sort((a, b) => a.order - b.order)

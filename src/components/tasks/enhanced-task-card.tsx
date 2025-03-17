@@ -7,7 +7,7 @@ import { Calendar, Clock, MoreHorizontal, AlertTriangle, UserX } from 'lucide-re
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Task } from '@/store/useTaskStore';
-import { CircleProgress } from '@/components/ui/circle-progress';
+import { Progress } from '@/components/ui/progress';
 import { getStatusClassName, getTaskPriorityClass } from '@/services/taskService';
 
 interface EnhancedTaskCardProps {
@@ -76,14 +76,14 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
             {task.description}
           </p>
 
-          {/* Unassigned ribbon or progress circle */}
+          {/* Unassigned ribbon or progress bar */}
           <div className="flex justify-between items-center">
             {isUnassigned() ? (
               <div className="flex items-center">
                 <div className="relative">
                   <Badge 
                     variant="outline" 
-                    className="bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400 flex items-center gap-1.5"
+                    className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 flex items-center gap-1.5 border-gray-300"
                   >
                     <UserX size={14} />
                     Unassigned
@@ -95,12 +95,17 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <CircleProgress 
-                  value={task.progress} 
-                  size="small"
-                  className={task.status === 'completed' ? 'text-status-completed' : ''}
-                />
-                <Avatar className="h-8 w-8 border border-border">
+                <div className="flex-1 max-w-24">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs font-medium">{task.progress}%</span>
+                  </div>
+                  <Progress 
+                    value={task.progress} 
+                    className="h-2"
+                    indicatorClassName={task.status === 'completed' ? 'bg-status-completed' : undefined}
+                  />
+                </div>
+                <Avatar className="h-8 w-8 border border-border flex items-center justify-center">
                   <div className="flex items-center justify-center w-full h-full text-xs font-medium bg-primary text-primary-foreground">
                     {task.assignee.name.split(' ').map(n => n[0]).join('')}
                   </div>
@@ -111,7 +116,7 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
             {/* Priority badge */}
             <div className="flex items-center">
               <div className={cn(
-                "py-0.5 px-2.5 text-xs font-medium rounded border",
+                "py-0.5 px-2.5 text-xs font-medium rounded",
                 getTaskPriorityClass(task.priority)
               )}>
                 {task.priority === 'high' && <AlertTriangle size={12} className="inline mr-1 text-red-600 dark:text-red-400" />}
