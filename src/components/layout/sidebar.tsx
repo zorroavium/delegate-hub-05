@@ -22,6 +22,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTheme } from '@/components/theme/theme-provider';
 
 interface SidebarOption {
   path: string;
@@ -70,12 +71,18 @@ const sidebarOptions: SidebarOption[] = [
 const Sidebar = ({ className }: { className?: string }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { applySidebarTheme } = useTheme();
   
   return (
-    <div className={cn('h-screen flex flex-col bg-card/80 border-r w-full', className)}>
+    <div className={cn('h-screen flex flex-col bg-card/80 border-r w-full', 
+                       applySidebarTheme ? 'themed-sidebar' : '',
+                       className)}>
       <div className="p-4">
         <div className="flex items-center">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">D</div>
+          <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-primary-foreground font-bold text-lg",
+                            applySidebarTheme ? 'bg-[var(--sidebar-primary,theme(colors.primary))]' : 'bg-primary')}>
+            D
+          </div>
           <h1 className="text-xl font-bold ml-2">DelegateEase</h1>
         </div>
       </div>
@@ -108,7 +115,10 @@ const Sidebar = ({ className }: { className?: string }) => {
         <Separator className="my-3" />
         <div className="flex items-center">
           <Avatar className="h-9 w-9">
-            <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-lg font-medium">A</div>
+            <div className={cn("bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-lg font-medium",
+                              applySidebarTheme ? 'bg-[var(--sidebar-primary,theme(colors.primary))]' : '')}>
+              A
+            </div>
           </Avatar>
           <div className="ml-2">
             <p className="text-sm font-medium">Admin User</p>

@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/components/theme/theme-provider';
@@ -8,9 +7,10 @@ import { Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 export function ThemeSettings() {
-  const { theme, setTheme, themeColor, setThemeColor } = useTheme();
+  const { theme, setTheme, themeColor, setThemeColor, applySidebarTheme, toggleSidebarTheme } = useTheme();
   const [activeThemeColor, setActiveThemeColor] = useState(themeColor || 'blue');
 
   const handleSaveThemeColor = () => {
@@ -24,7 +24,7 @@ export function ThemeSettings() {
 
   return (
     <>
-      <CardContent className="space-y-2">
+      <div className="space-y-2">
         <h3 className="text-lg font-medium">Mode</h3>
         <RadioGroup
           value={theme}
@@ -76,11 +76,11 @@ export function ThemeSettings() {
             </Label>
           </div>
         </RadioGroup>
-      </CardContent>
+      </div>
 
       <Separator className="my-4" />
       
-      <CardContent className="space-y-4">
+      <div className="space-y-4">
         <h3 className="text-lg font-medium">Theme Colors</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="flex flex-col items-center space-y-2">
@@ -112,8 +112,18 @@ export function ThemeSettings() {
             <span className="text-sm">Orange</span>
           </div>
         </div>
+        
+        <div className="flex items-center space-x-2 mt-4">
+          <Switch 
+            id="apply-sidebar" 
+            checked={applySidebarTheme}
+            onCheckedChange={toggleSidebarTheme}
+          />
+          <Label htmlFor="apply-sidebar">Apply theme color to sidebar</Label>
+        </div>
+        
         <Button onClick={handleSaveThemeColor} className="mt-4">Save Theme Color</Button>
-      </CardContent>
+      </div>
     </>
   );
 }

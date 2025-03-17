@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SidebarLayout } from "@/components/layout/sidebar";
 import { EmployeeProfile } from "@/components/employees/employee-profile";
 import { useEmployeeStore } from "@/store/useEmployeeStore";
@@ -13,6 +13,7 @@ const EmployeesPage: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
   const { employees } = useEmployeeStore();
   const { tasks } = useTaskStore();
+  const [employeeStats, setEmployeeStats] = useState<Record<string, any>>({});
   
   const handleEmployeeClick = (employee: any) => {
     setSelectedEmployee(employee);
@@ -23,21 +24,33 @@ const EmployeesPage: React.FC = () => {
   };
 
   // Calculate employee performance stats
-  const getEmployeeStats = (employeeId: string) => {
-    const employeeTasks = tasks.filter(task => task.assignee.id === employeeId);
-    const totalTasks = employeeTasks.length;
-    const completedTasks = employeeTasks.filter(task => task.status === 'completed').length;
-    const inProgressTasks = employeeTasks.filter(task => task.status === 'in-progress').length;
-    const pendingTasks = employeeTasks.filter(task => task.status === 'pending').length;
-    
-    return {
-      totalTasks,
-      completedTasks,
-      inProgressTasks,
-      pendingTasks,
-      completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  useEffect(() => {
+    const calculateStats = () => {
+      const stats: Record<string, any> = {};
+      
+      employees.forEach(employee => {
+        const employeeTasks = tasks.filter(task => task.assignee?.id === employee.id);
+        const totalTasks = employeeTasks.length;
+        const completedTasks = employeeTasks.filter(task => task.status === 'completed').length;
+        const inProgressTasks = employeeTasks.filter(task => task.status === 'in-progress').length;
+        const pendingTasks = employeeTasks.filter(task => task.status === 'pending').length;
+        const delayedTasks = employeeTasks.filter(task => task.status === 'delayed').length;
+        
+        stats[employee.id] = {
+          totalTasks,
+          completedTasks,
+          inProgressTasks,
+          pendingTasks,
+          delayedTasks,
+          completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+        };
+      });
+      
+      setEmployeeStats(stats);
     };
-  };
+    
+    calculateStats();
+  }, [employees, tasks]);
   
   return (
     <SidebarLayout>
@@ -67,7 +80,14 @@ const EmployeesPage: React.FC = () => {
         {viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {employees.map((employee) => {
-              const stats = getEmployeeStats(employee.id);
+              const stats = employeeStats[employee.id] || {
+                totalTasks: 0,
+                completedTasks: 0,
+                inProgressTasks: 0,
+                pendingTasks: 0,
+                completionRate: 0
+              };
+              
               return (
                 <div 
                   key={employee.id} 
@@ -164,7 +184,14 @@ const EmployeesPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {employees.map((employee) => {
-                    const stats = getEmployeeStats(employee.id);
+                    const stats = employeeStats[employee.id] || {
+                      totalTasks: 0,
+                      completedTasks: 0,
+                      inProgressTasks: 0,
+                      pendingTasks: 0,
+                      completionRate: 0
+                    };
+                    
                     return (
                       <tr 
                         key={employee.id}
