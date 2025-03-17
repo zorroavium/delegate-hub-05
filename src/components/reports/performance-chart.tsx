@@ -2,7 +2,6 @@
 import React from 'react';
 import { 
   BarChart as RechartsBarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -16,6 +15,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
+import { ClickableBar } from './clickable-bar';
 
 // Colors for the charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -37,7 +37,8 @@ export const TaskDistributionChart = () => {
     
     return Object.keys(statusCount).map(status => ({
       name: status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' '),
-      tasks: statusCount[status]
+      tasks: statusCount[status],
+      originalStatus: status // Keep the original status ID for navigation
     }));
   };
   
@@ -55,7 +56,8 @@ export const TaskDistributionChart = () => {
     
     return Object.keys(priorityCount).map(priority => ({
       name: priority.charAt(0).toUpperCase() + priority.slice(1),
-      tasks: priorityCount[priority]
+      tasks: priorityCount[priority],
+      originalPriority: priority // Keep the original priority for navigation
     }));
   };
   
@@ -67,7 +69,7 @@ export const TaskDistributionChart = () => {
       <Card>
         <CardHeader>
           <CardTitle>Tasks by Status</CardTitle>
-          <CardDescription>Distribution of tasks across different statuses</CardDescription>
+          <CardDescription>Distribution of tasks across different statuses. Click on a bar to see tasks.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -80,7 +82,7 @@ export const TaskDistributionChart = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="tasks" fill="#8884d8" name="Number of Tasks" />
+              <ClickableBar dataKey="tasks" fill="#8884d8" name="Number of Tasks" />
             </RechartsBarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -103,9 +105,18 @@ export const TaskDistributionChart = () => {
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="tasks"
+                onClick={(data) => {
+                  const event = new CustomEvent('chart-click', {
+                    detail: {
+                      payload: { name: data.originalPriority },
+                      dataKey: 'priority'
+                    }
+                  });
+                  document.dispatchEvent(event);
+                }}
               >
                 {tasksByPriority.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cursor="pointer" />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => [`${value} tasks`, 'Count']} />
@@ -126,9 +137,13 @@ export const TeamPerformanceChart = () => {
   const getTasksByEmployee = () => {
     const employeeTaskCount: { [key: string]: number } = {};
     const employeeCompletedCount: { [key: string]: number } = {};
+    const employeeIds: { [key: string]: string } = {};
     
     tasks.forEach(task => {
       const employeeName = task.assignee.name;
+      const employeeId = task.assignee.id;
+      
+      employeeIds[employeeName] = employeeId;
       
       if (employeeTaskCount[employeeName]) {
         employeeTaskCount[employeeName]++;
@@ -149,7 +164,8 @@ export const TeamPerformanceChart = () => {
       .map(name => ({
         name: name,
         assigned: employeeTaskCount[name],
-        completed: employeeCompletedCount[name] || 0
+        completed: employeeCompletedCount[name] || 0,
+        employeeId: employeeIds[name]
       }))
       .sort((a, b) => b.assigned - a.assigned)
       .slice(0, 5); // Get top 5 employees by task count
@@ -188,12 +204,25 @@ export const TeamPerformanceChart = () => {
   const tasksByEmployee = getTasksByEmployee();
   const performanceByDepartment = getPerformanceByDepartment();
   
+  // Handle click on employee bar to navigate to their tasks
+  const handleEmployeeClick = (data: any) => {
+    if (data.payload && data.payload.employeeId) {
+      const event = new CustomEvent('chart-click', {
+        detail: {
+          payload: { name: data.payload.employeeId },
+          dataKey: 'employee'
+        }
+      });
+      document.dispatchEvent(event);
+    }
+  };
+  
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle>Tasks by Employee</CardTitle>
-          <CardDescription>Assigned vs completed tasks per employee</CardDescription>
+          <CardDescription>Assigned vs completed tasks per employee. Click on a bar to see their tasks.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -206,8 +235,8 @@ export const TeamPerformanceChart = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="assigned" fill="#8884d8" name="Tasks Assigned" />
-              <Bar dataKey="completed" fill="#82ca9d" name="Tasks Completed" />
+              <ClickableBar dataKey="assigned" fill="#8884d8" name="Tasks Assigned" onClick={handleEmployeeClick} />
+              <ClickableBar dataKey="completed" fill="#82ca9d" name="Tasks Completed" onClick={handleEmployeeClick} />
             </RechartsBarChart>
           </ResponsiveContainer>
         </CardContent>
@@ -216,7 +245,7 @@ export const TeamPerformanceChart = () => {
       <Card>
         <CardHeader>
           <CardTitle>Performance by Department</CardTitle>
-          <CardDescription>Task completion rate per department</CardDescription>
+          <CardDescription>Task completion rate per department. Click on a bar to see department tasks.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -229,7 +258,7 @@ export const TeamPerformanceChart = () => {
               <YAxis unit="%" />
               <Tooltip formatter={(value) => [`${value}%`, 'Completion Rate']} />
               <Legend />
-              <Bar dataKey="completionRate" fill="#82ca9d" name="Completion Rate (%)" />
+              <ClickableBar dataKey="completionRate" fill="#82ca9d" name="Completion Rate (%)" />
             </RechartsBarChart>
           </ResponsiveContainer>
         </CardContent>

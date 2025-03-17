@@ -34,8 +34,10 @@ const queryClient = new QueryClient({
 
 // State persistence component
 function StatePersistence() {
-  const { tasks, setTasks } = useTaskStore();
-  const { employees, setEmployees } = useEmployeeStore();
+  const tasks = useTaskStore(state => state.tasks);
+  const addTask = useTaskStore(state => state.addTask);
+  const employees = useEmployeeStore(state => state.employees);
+  const addEmployee = useEmployeeStore(state => state.addEmployee);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -55,7 +57,11 @@ function StatePersistence() {
     const savedTasks = localStorage.getItem('tasks');
     if (savedTasks) {
       try {
-        setTasks(JSON.parse(savedTasks));
+        const parsedTasks = JSON.parse(savedTasks);
+        // Only set tasks if the store is empty
+        if (tasks.length === 0 && parsedTasks.length > 0) {
+          parsedTasks.forEach((task: any) => addTask(task));
+        }
       } catch (e) {
         console.error('Error loading tasks from localStorage', e);
       }
@@ -64,12 +70,16 @@ function StatePersistence() {
     const savedEmployees = localStorage.getItem('employees');
     if (savedEmployees) {
       try {
-        setEmployees(JSON.parse(savedEmployees));
+        const parsedEmployees = JSON.parse(savedEmployees);
+        // Only set employees if the store is empty
+        if (employees.length === 0 && parsedEmployees.length > 0) {
+          parsedEmployees.forEach((employee: any) => addEmployee(employee));
+        }
       } catch (e) {
         console.error('Error loading employees from localStorage', e);
       }
     }
-  }, [setTasks, setEmployees]);
+  }, [addTask, addEmployee, tasks.length, employees.length]);
 
   return null;
 }

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,14 +18,121 @@ import {
   Plus, 
   Calendar as CalendarIcon, 
   Clock, 
-  Users 
+  Users,
+  ArrowUpRight
 } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { useEmployeeStore } from "@/store/useEmployeeStore";
 
-// Mock data for calendar events
-const eventsMock = [
+// Base event type
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  type: 'task' | 'meeting' | 'deadline';
+  assignees: Array<{
+    id: string;
+    name: string;
+    avatar: string;
+    color: string;
+  }>;
+  description?: string;
+}
+
+// Form schema for event creation
+const eventSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  date: z.date({
+    required_error: "Date is required",
+  }),
+  time: z.string().min(1, "Time is required"),
+  type: z.enum(["task", "meeting", "deadline"]),
+  assigneeIds: z.array(z.string()).min(1, "At least one assignee is required"),
+});
+
+type EventFormValues = z.infer<typeof eventSchema>;
+
+// Event Card Component
+const EventCard = ({ event }: { event: CalendarEvent }) => {
+  const eventTypeColors = {
+    task: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500',
+    meeting: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-500',
+    deadline: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500',
+  };
+  
+  const eventColor = eventTypeColors[event.type as keyof typeof eventTypeColors] || eventTypeColors.task;
+  
+  return (
+    <Card className="mb-2 hover:shadow-md transition-shadow duration-300">
+      <CardContent className="p-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="outline" className={eventColor}>
+                {event.type === 'task' ? 'Task' : event.type === 'meeting' ? 'Meeting' : 'Deadline'}
+              </Badge>
+              <span className="text-xs text-muted-foreground">{event.time}</span>
+            </div>
+            <h4 className="font-medium text-sm">{event.title}</h4>
+            {event.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
+            )}
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-1">
+          {event.assignees.slice(0, 3).map((assignee) => (
+            <Avatar key={assignee.id} className={`h-6 w-6 ${assignee.color}`}>
+              <span className="text-[10px] text-white">{assignee.avatar}</span>
+            </Avatar>
+          ))}
+          {event.assignees.length > 3 && (
+            <Avatar className="h-6 w-6 bg-gray-300">
+              <span className="text-[10px] text-white">+{event.assignees.length - 3}</span>
+            </Avatar>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Day Cell Component
+const DayCell = ({ date, events }: { date: Date; events: any[] }) => {
+  const dayEvents = events.filter(event => isSameDay(parseISO(event.date), date));
+  
+  return (
+    <div className="min-h-[120px] border-t p-1">
+      <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
+      <div className="space-y-1">
+        {dayEvents.map(event => (
+          <div key={event.id} className="text-xs p-1 rounded bg-blue-50 dark:bg-blue-900/20 truncate">
+            {event.title}
+          </div>
+        ))}
+        {dayEvents.length > 2 && (
+          <div className="text-xs text-muted-foreground text-center">+{dayEvents.length - 2} more</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Mock events initially, will be replaced with state
+const initialEvents: CalendarEvent[] = [
   {
     id: '1',
     title: 'Website Content Update',
@@ -91,71 +198,13 @@ const eventsMock = [
   },
 ];
 
-// Event Card Component
-const EventCard = ({ event }: { event: any }) => {
-  const eventTypeColors = {
-    task: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500',
-    meeting: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-500',
-    deadline: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500',
-  };
-  
-  const eventColor = eventTypeColors[event.type as keyof typeof eventTypeColors] || eventTypeColors.task;
-  
-  return (
-    <Card className="mb-2 hover:shadow-md transition-shadow duration-300">
-      <CardContent className="p-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="outline" className={eventColor}>
-                {event.type === 'task' ? 'Task' : event.type === 'meeting' ? 'Meeting' : 'Deadline'}
-              </Badge>
-              <span className="text-xs text-muted-foreground">{event.time}</span>
-            </div>
-            <h4 className="font-medium text-sm">{event.title}</h4>
-          </div>
-        </div>
-        <div className="mt-2 flex items-center gap-1">
-          {event.assignees.slice(0, 3).map((assignee: any) => (
-            <Avatar key={assignee.id} className={`h-6 w-6 ${assignee.color}`}>
-              <span className="text-[10px] text-white">{assignee.avatar}</span>
-            </Avatar>
-          ))}
-          {event.assignees.length > 3 && (
-            <Avatar className="h-6 w-6 bg-gray-300">
-              <span className="text-[10px] text-white">+{event.assignees.length - 3}</span>
-            </Avatar>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Day Cell Component
-const DayCell = ({ date, events }: { date: Date; events: any[] }) => {
-  const dayEvents = events.filter(event => isSameDay(parseISO(event.date), date));
-  
-  return (
-    <div className="min-h-[120px] border-t p-1">
-      <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
-      <div className="space-y-1">
-        {dayEvents.map(event => (
-          <div key={event.id} className="text-xs p-1 rounded bg-blue-50 dark:bg-blue-900/20 truncate">
-            {event.title}
-          </div>
-        ))}
-        {dayEvents.length > 2 && (
-          <div className="text-xs text-muted-foreground text-center">+{dayEvents.length - 2} more</div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 const CalendarPage = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [view, setView] = useState('month');
+  const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const { toast } = useToast();
+  const { employees } = useEmployeeStore();
   
   // Calculate week interval
   const weekStart = startOfWeek(date);
@@ -163,18 +212,111 @@ const CalendarPage = () => {
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
   
   // Filter events for the current week
-  const currentWeekEvents = eventsMock.filter(event => {
+  const currentWeekEvents = events.filter(event => {
     const eventDate = parseISO(event.date);
     return eventDate >= weekStart && eventDate <= weekEnd;
   });
+  
+  // Filter events for upcoming
+  const upcomingEvents = events
+    .filter(event => {
+      const eventDate = parseISO(event.date);
+      return eventDate >= new Date();
+    })
+    .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+    .slice(0, 5);
   
   // Group events by day for week view
   const eventsByDay = weekDays.map(day => {
     return {
       date: day,
-      events: eventsMock.filter(event => isSameDay(parseISO(event.date), day))
+      events: events.filter(event => isSameDay(parseISO(event.date), day))
     };
   });
+  
+  // Form for adding new events
+  const form = useForm<EventFormValues>({
+    resolver: zodResolver(eventSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      date: new Date(),
+      time: "",
+      type: "meeting",
+      assigneeIds: [],
+    },
+  });
+  
+  // Handle calendar date click (for day view)
+  const handleDateClick = (selectedDate: Date) => {
+    setDate(selectedDate);
+    setView('day');
+  };
+  
+  // Handle opening event dialog with pre-selected date
+  const handleAddEventWithDate = (selectedDate: Date) => {
+    form.setValue('date', selectedDate);
+    setIsAddEventOpen(true);
+  };
+  
+  // Handle calendar day double click
+  const handleDayDoubleClick = (day: Date) => {
+    handleAddEventWithDate(day);
+  };
+  
+  // Create a new event
+  const onSubmit = (data: EventFormValues) => {
+    // Map assigneeIds to assignee objects
+    const assignees = data.assigneeIds.map(id => {
+      const employee = employees.find(e => e.id === id);
+      return {
+        id: employee?.id || id,
+        name: employee?.name || 'Unknown',
+        avatar: employee?.avatar || employee?.name.split(' ').map(n => n[0]).join('') || 'UN',
+        color: employee?.color || 'bg-gray-500',
+      };
+    });
+    
+    // Create new event
+    const newEvent: CalendarEvent = {
+      id: Date.now().toString(),
+      title: data.title,
+      description: data.description,
+      date: format(data.date, 'yyyy-MM-dd'),
+      time: data.time,
+      type: data.type,
+      assignees,
+    };
+    
+    // Add to events array
+    setEvents([...events, newEvent]);
+    
+    // Close dialog and show toast
+    setIsAddEventOpen(false);
+    toast({
+      title: "Event Added",
+      description: `"${data.title}" has been scheduled for ${format(data.date, 'MMM dd, yyyy')}`
+    });
+    
+    // Reset form
+    form.reset();
+  };
+  
+  // Handle Google Calendar integration
+  const handleGoogleCalendarConnect = () => {
+    toast({
+      title: "Google Calendar Integration",
+      description: "Connecting to Google Calendar...",
+    });
+    
+    // Simulating a connection process
+    setTimeout(() => {
+      toast({
+        title: "Connected Successfully",
+        description: "Your events have been synced with Google Calendar.",
+      });
+    }, 2000);
+  };
   
   return (
     <SidebarLayout>
@@ -192,7 +334,12 @@ const CalendarPage = () => {
                 <SelectItem value="day">Day</SelectItem>
               </SelectContent>
             </Select>
-            <Button>
+            <Button variant="outline" onClick={handleGoogleCalendarConnect} className="gap-1">
+              <CalendarIcon size={16} />
+              <span className="hidden md:inline">Sync</span>
+              <ArrowUpRight size={14} />
+            </Button>
+            <Button onClick={() => setIsAddEventOpen(true)}>
               <Plus size={16} className="mr-1" />
               Add Event
             </Button>
@@ -240,6 +387,8 @@ const CalendarPage = () => {
                     mode="single"
                     selected={date}
                     onSelect={(newDate) => newDate && setDate(newDate)}
+                    onDayClick={(day) => handleDateClick(day)}
+                    onDayDoubleClick={handleDayDoubleClick}
                     className="p-3 pointer-events-auto"
                   />
                 </div>
@@ -258,7 +407,11 @@ const CalendarPage = () => {
                   
                   <div className="grid grid-cols-7 gap-1 p-2">
                     {eventsByDay.map((day) => (
-                      <div key={day.date.toString()} className="border rounded-md p-2 min-h-[200px]">
+                      <div 
+                        key={day.date.toString()} 
+                        className="border rounded-md p-2 min-h-[200px] cursor-pointer"
+                        onDoubleClick={() => handleAddEventWithDate(day.date)}
+                      >
                         <div className="text-center mb-2">
                           <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full 
                             ${isSameDay(day.date, new Date()) ? 'bg-primary text-primary-foreground' : ''}`}>
@@ -295,18 +448,27 @@ const CalendarPage = () => {
                     <div className="flex items-center gap-2">
                       <Clock size={16} className="text-muted-foreground" />
                       <h4 className="font-medium">Scheduled Events</h4>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleAddEventWithDate(date)}
+                        className="ml-auto"
+                      >
+                        <Plus size={14} className="mr-1" />
+                        Add
+                      </Button>
                     </div>
                     
-                    {eventsMock
+                    {events
                       .filter(event => isSameDay(parseISO(event.date), date))
                       .map(event => (
                         <EventCard key={event.id} event={event} />
                       ))}
                     
-                    {!eventsMock.some(event => isSameDay(parseISO(event.date), date)) && (
+                    {!events.some(event => isSameDay(parseISO(event.date), date)) && (
                       <div className="text-center py-8 text-muted-foreground">
                         <p>No events scheduled for today</p>
-                        <Button variant="outline" className="mt-2">
+                        <Button variant="outline" className="mt-2" onClick={() => handleAddEventWithDate(date)}>
                           <Plus size={16} className="mr-1" />
                           Add Event
                         </Button>
@@ -322,16 +484,24 @@ const CalendarPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Upcoming Events</CardTitle>
+              </CardHeader>
               <CardContent className="p-4">
-                <h3 className="text-lg font-medium mb-4">Upcoming Events</h3>
                 <div className="space-y-2">
-                  {eventsMock
-                    .filter(event => new Date(event.date) >= new Date())
-                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                    .slice(0, 5)
-                    .map(event => (
+                  {upcomingEvents.length > 0 ? (
+                    upcomingEvents.map(event => (
                       <EventCard key={event.id} event={event} />
-                    ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No upcoming events</p>
+                      <Button variant="outline" className="mt-2" onClick={() => setIsAddEventOpen(true)}>
+                        <Plus size={16} className="mr-1" />
+                        Add Event
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -346,59 +516,190 @@ const CalendarPage = () => {
                 </div>
                 
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-blue-500">
-                        <span className="text-xs text-white">SJ</span>
-                      </Avatar>
-                      <span className="text-sm font-medium">Sarah Johnson</span>
+                  {employees.slice(0, 4).map((employee) => (
+                    <div key={employee.id} className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Avatar className={`h-8 w-8 ${employee.color || 'bg-gray-500'}`}>
+                          <span className="text-xs text-white">
+                            {employee.avatar || employee.name.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </Avatar>
+                        <span className="text-sm font-medium">{employee.name}</span>
+                      </div>
+                      <Badge className={
+                        employee.status === 'active' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                          : employee.status === 'inactive'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }>
+                        {employee.status === 'active' ? 'Available' : 
+                         employee.status === 'inactive' ? 'Unavailable' : 'Away'}
+                      </Badge>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
-                      Available
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-green-500">
-                        <span className="text-xs text-white">MA</span>
-                      </Avatar>
-                      <span className="text-sm font-medium">Mike Anderson</span>
-                    </div>
-                    <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-500">
-                      In Meeting
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-purple-500">
-                        <span className="text-xs text-white">EC</span>
-                      </Avatar>
-                      <span className="text-sm font-medium">Emily Chen</span>
-                    </div>
-                    <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500">
-                      Away
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 bg-yellow-500">
-                        <span className="text-xs text-white">AT</span>
-                      </Avatar>
-                      <span className="text-sm font-medium">Alex Thompson</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
-                      Available
-                    </Badge>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
+
+      {/* Add Event Dialog */}
+      <Dialog open={isAddEventOpen} onOpenChange={setIsAddEventOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Event</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Event title" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Event description" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Time</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 9:00 AM - 10:30 AM" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Event Type</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select event type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="meeting">Meeting</SelectItem>
+                        <SelectItem value="task">Task</SelectItem>
+                        <SelectItem value="deadline">Deadline</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="assigneeIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assignees</FormLabel>
+                    <div className="space-y-2">
+                      {employees.map((employee) => (
+                        <div key={employee.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`employee-${employee.id}`}
+                            checked={field.value.includes(employee.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                field.onChange([...field.value, employee.id]);
+                              } else {
+                                field.onChange(field.value.filter(id => id !== employee.id));
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <label htmlFor={`employee-${employee.id}`} className="text-sm">
+                            {employee.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsAddEventOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create Event</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </SidebarLayout>
   );
 };
