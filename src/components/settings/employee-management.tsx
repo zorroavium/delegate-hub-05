@@ -41,8 +41,8 @@ export const EmployeeManagement = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDepartment, setFilterDepartment] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterDepartment, setFilterDepartment] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortConfig, setSortConfig] = useState<{field: SortField, direction: SortDirection}>({
     field: 'name',
     direction: 'asc'
@@ -76,12 +76,12 @@ export const EmployeeManagement = () => {
     }
     
     // Apply department filter
-    if (filterDepartment) {
+    if (filterDepartment !== "all") {
       result = result.filter(employee => employee.department === filterDepartment);
     }
     
     // Apply status filter
-    if (filterStatus) {
+    if (filterStatus !== "all") {
       result = result.filter(employee => employee.status === filterStatus);
     }
     
@@ -314,8 +314,8 @@ export const EmployeeManagement = () => {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setFilterDepartment("");
-    setFilterStatus("");
+    setFilterDepartment("all");
+    setFilterStatus("all");
     setSortConfig({
       field: 'name',
       direction: 'asc'
@@ -415,7 +415,7 @@ export const EmployeeManagement = () => {
                 <SelectValue placeholder="All Departments" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Departments</SelectItem>
+                <SelectItem value="all">All Departments</SelectItem>
                 <SelectItem value="Leadership">Leadership</SelectItem>
                 <SelectItem value="Operations">Operations</SelectItem>
                 <SelectItem value="Audit & Assurance">Audit & Assurance</SelectItem>
@@ -426,7 +426,7 @@ export const EmployeeManagement = () => {
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="on-leave">On Leave</SelectItem>
