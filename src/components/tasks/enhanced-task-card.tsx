@@ -61,13 +61,15 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
     >
       <Card className="border-0 shadow-none">
         <CardContent className="p-4 space-y-3">
-          {/* Task title and actions */}
+          {/* Task title and priority */}
           <div className="flex items-start justify-between">
             <h3 className="font-medium text-balance line-clamp-2">{task.title}</h3>
-            <div className="flex items-center">
-              <button className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                <MoreHorizontal size={16} />
-              </button>
+            <div className={cn(
+              "py-0.5 px-2.5 text-xs font-medium rounded whitespace-nowrap ml-2",
+              getTaskPriorityClass(task.priority)
+            )}>
+              {task.priority === 'high' && <AlertTriangle size={12} className="inline mr-1 text-red-600 dark:text-red-400" />}
+              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
             </div>
           </div>
 
@@ -110,17 +112,6 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
                 </Avatar>
               </div>
             )}
-
-            {/* Priority badge */}
-            <div className="flex items-center">
-              <div className={cn(
-                "py-0.5 px-2.5 text-xs font-medium rounded",
-                getTaskPriorityClass(task.priority)
-              )}>
-                {task.priority === 'high' && <AlertTriangle size={12} className="inline mr-1 text-red-600 dark:text-red-400" />}
-                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-              </div>
-            </div>
           </div>
 
           {/* Footer with metadata */}

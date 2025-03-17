@@ -103,17 +103,20 @@ export const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             {selectedEmployee && <span className="ml-auto text-xs truncate max-w-[80px]">{getSelectedEmployeeName()}</span>}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            {employees.map((employee) => (
-              <DropdownMenuItem key={employee.id} onClick={() => onEmployeeChange(employee.id)}>
-                <span>{employee.name}</span>
-                {selectedEmployee === employee.id && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onEmployeeChange(null)}>
               <span>Show all</span>
               {!selectedEmployee && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {employees.map((employee) => (
+              <DropdownMenuItem key={employee.id} onClick={() => onEmployeeChange(employee.id)}>
+                <div className="flex items-center">
+                  <div className={`w-2 h-2 rounded-full mr-2 ${employee.color || 'bg-primary'}`}></div>
+                  <span>{employee.name}</span>
+                </div>
+                {selectedEmployee === employee.id && <CheckCircle2 size={16} className="ml-auto text-green-500" />}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         

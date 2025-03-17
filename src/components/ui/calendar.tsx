@@ -65,15 +65,15 @@ function Calendar({
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
-        Day: (dayProps) => {
-          // Extract the date from day props
-          const { date, displayMonth } = dayProps;
+        Day: ({ date, ...dayProps }) => {
           if (!date) return <div>Invalid Day</div>;
           
-          // Check if the date is disabled based on the modifiers
-          const isDisabled = dayProps.modifiers?.disabled || false;
-          const isSelected = dayProps.modifiers?.selected || false;
-          const isToday = dayProps.modifiers?.today || false;
+          // Check if the date is disabled, selected, or today
+          // Access these properties safely from dayProps
+          const modifiers = (dayProps as any).modifiers || {};
+          const isDisabled = modifiers.disabled || false;
+          const isSelected = modifiers.selected || false;
+          const isToday = modifiers.today || false;
           
           return (
             <div

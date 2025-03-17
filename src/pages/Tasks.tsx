@@ -196,7 +196,7 @@ const TasksPage = () => {
         </div>
         
         <Tabs defaultValue={filter} value={filter} className="w-full" onValueChange={setFilter}>
-          <TabsList className="flex flex-wrap">
+          <TabsList className="flex flex-wrap justify-start">
             <TabsTrigger value="all">All Tasks</TabsTrigger>
             
             {sortedStatuses.map((status) => (
