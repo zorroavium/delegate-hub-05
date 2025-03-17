@@ -121,14 +121,78 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ className }) => {
     }, 3000);
   };
 
+  // Function to get background gradient based on tab
+  const getTabGradient = (tab: string) => {
+    switch (tab) {
+      case 'performance':
+        return 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/30';
+      case 'bottlenecks':
+        return 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/40 dark:to-amber-900/30';
+      case 'predictions':
+        return 'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/30';
+      default:
+        return 'bg-muted/50';
+    }
+  };
+
+  // Function to get insight text color based on tab
+  const getTextColorClass = (tab: string) => {
+    switch (tab) {
+      case 'performance':
+        return 'text-blue-700 dark:text-blue-300';
+      case 'bottlenecks':
+        return 'text-amber-700 dark:text-amber-300';
+      case 'predictions':
+        return 'text-purple-700 dark:text-purple-300';
+      default:
+        return '';
+    }
+  };
+
+  // Function to get highlight span color
+  const getHighlightColor = (tab: string) => {
+    switch (tab) {
+      case 'performance':
+        return 'bg-blue-200 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200';
+      case 'bottlenecks':
+        return 'bg-amber-200 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200';
+      case 'predictions':
+        return 'bg-purple-200 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200';
+      default:
+        return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+    }
+  };
+
+  // Function to format insight text with highlights
+  const formatInsightText = (text: string, tab: string) => {
+    // Convert the text to React elements with highlights
+    const parts = text.split(/(\d+%|\d+\.\d+|\d+ days)/g);
+    
+    return (
+      <>
+        {parts.map((part, index) => {
+          // Check if this part matches our pattern for highlighting
+          if (/^\d+%$|^\d+\.\d+$|^\d+ days$/.test(part)) {
+            return (
+              <span key={index} className={`px-1.5 py-0.5 rounded font-medium ${getHighlightColor(tab)}`}>
+                {part}
+              </span>
+            );
+          }
+          return part;
+        })}
+      </>
+    );
+  };
+
   return (
     <div className={className}>
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden border-t-4 border-t-primary shadow-md">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Brain size={20} /> AI-Powered Insights
+                <Brain size={20} className="text-primary" /> AI-Powered Insights
               </CardTitle>
               <CardDescription>
                 Intelligent analysis of your organization's data to uncover trends and opportunities
@@ -139,36 +203,37 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ className }) => {
               size="sm" 
               onClick={handleGenerateFullReport}
               disabled={isLoading}
+              className="bg-white/50 hover:bg-white/80 dark:bg-gray-900/50 dark:hover:bg-gray-900/80"
             >
               {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
               Generate Full Report
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-5">
           <Tabs defaultValue="insights" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="insights">Automated Insights</TabsTrigger>
-              <TabsTrigger value="ask">Ask AI</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-muted/80">
+              <TabsTrigger value="insights" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Automated Insights</TabsTrigger>
+              <TabsTrigger value="ask" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Ask AI</TabsTrigger>
             </TabsList>
             
             <TabsContent value="insights" className="space-y-4 mt-4">
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className={`rounded-lg p-4 ${getTabGradient(activeInsightTab)}`}>
                 <Tabs value={activeInsightTab} onValueChange={setActiveInsightTab}>
-                  <TabsList className="grid grid-cols-3">
-                    <TabsTrigger value="performance">
+                  <TabsList className="grid grid-cols-3 bg-white/60 dark:bg-gray-800/60">
+                    <TabsTrigger value="performance" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
                       <div className="flex items-center gap-1">
                         <BarChart4 size={16} />
                         <span className="hidden sm:inline">Performance</span>
                       </div>
                     </TabsTrigger>
-                    <TabsTrigger value="bottlenecks">
+                    <TabsTrigger value="bottlenecks" className="data-[state=active]:bg-amber-500 data-[state=active]:text-white">
                       <div className="flex items-center gap-1">
                         <TrendingUp size={16} />
                         <span className="hidden sm:inline">Bottlenecks</span>
                       </div>
                     </TabsTrigger>
-                    <TabsTrigger value="predictions">
+                    <TabsTrigger value="predictions" className="data-[state=active]:bg-purple-500 data-[state=active]:text-white">
                       <div className="flex items-center gap-1">
                         <Lightbulb size={16} />
                         <span className="hidden sm:inline">Predictions</span>
@@ -177,15 +242,21 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ className }) => {
                   </TabsList>
                   
                   <TabsContent value="performance" className="mt-4">
-                    <div className="whitespace-pre-line text-sm">{generateInsights('performance')}</div>
+                    <div className={`whitespace-pre-line text-sm ${getTextColorClass('performance')}`}>
+                      {formatInsightText(generateInsights('performance'), 'performance')}
+                    </div>
                   </TabsContent>
                   
                   <TabsContent value="bottlenecks" className="mt-4">
-                    <div className="whitespace-pre-line text-sm">{generateInsights('bottlenecks')}</div>
+                    <div className={`whitespace-pre-line text-sm ${getTextColorClass('bottlenecks')}`}>
+                      {formatInsightText(generateInsights('bottlenecks'), 'bottlenecks')}
+                    </div>
                   </TabsContent>
                   
                   <TabsContent value="predictions" className="mt-4">
-                    <div className="whitespace-pre-line text-sm">{generateInsights('predictions')}</div>
+                    <div className={`whitespace-pre-line text-sm ${getTextColorClass('predictions')}`}>
+                      {formatInsightText(generateInsights('predictions'), 'predictions')}
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>
@@ -198,6 +269,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ className }) => {
                     placeholder="Ask a question about your data..."
                     value={customQuery}
                     onChange={(e) => setCustomQuery(e.target.value)}
+                    className="border-primary/30 focus-visible:ring-primary"
                   />
                   <Button 
                     onClick={handleCustomQuery} 
@@ -209,20 +281,25 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ className }) => {
                 </div>
                 
                 {customResponse && (
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <div className="text-sm font-medium mb-2">Analysis Results:</div>
-                    <div className="whitespace-pre-line text-sm">{customResponse}</div>
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-lg p-4 shadow-inner">
+                    <div className="text-sm font-medium mb-2 flex items-center">
+                      <Brain size={16} className="mr-2 text-primary" />
+                      Analysis Results:
+                    </div>
+                    <div className="whitespace-pre-line text-sm">
+                      {formatInsightText(customResponse, 'performance')}
+                    </div>
                   </div>
                 )}
               </div>
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between bg-muted/30 px-5 py-3">
           <p className="text-xs text-muted-foreground">
             Insights are generated based on your organization's historical data and patterns
           </p>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/10">
             <Download className="h-4 w-4 mr-2" /> Export Insights
           </Button>
         </CardFooter>

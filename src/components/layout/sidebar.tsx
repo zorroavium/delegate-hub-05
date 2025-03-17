@@ -22,6 +22,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTheme } from '@/components/theme/theme-provider';
 
 interface SidebarOption {
   path: string;
@@ -70,9 +71,28 @@ const sidebarOptions: SidebarOption[] = [
 const Sidebar = ({ className }: { className?: string }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { themeColor, sidebarColor } = useTheme();
+  
+  // Generate sidebar background class based on theme color
+  const getSidebarBgClass = () => {
+    if (!sidebarColor) return "bg-card/80";
+    
+    switch (themeColor) {
+      case 'blue':
+        return "bg-blue-500/15 dark:bg-blue-950/40";
+      case 'purple':
+        return "bg-purple-500/15 dark:bg-purple-950/40";
+      case 'green':
+        return "bg-green-500/15 dark:bg-green-950/40";
+      case 'orange':
+        return "bg-orange-500/15 dark:bg-orange-950/40";
+      default:
+        return "bg-card/80";
+    }
+  };
   
   return (
-    <div className={cn('h-screen flex flex-col bg-card/80 border-r w-full', className)}>
+    <div className={cn('h-screen flex flex-col border-r w-full', getSidebarBgClass(), className)}>
       <div className="p-4">
         <div className="flex items-center">
           <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">D</div>
@@ -126,6 +146,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
+  const { themeColor, sidebarColor } = useTheme();
   
   useEffect(() => {
     if (!isMobile) {
@@ -136,6 +157,24 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
+  
+  // Generate sidebar background class based on theme color
+  const getSidebarBgClass = () => {
+    if (!sidebarColor) return "bg-card/80";
+    
+    switch (themeColor) {
+      case 'blue':
+        return "bg-blue-500/15 dark:bg-blue-950/40";
+      case 'purple':
+        return "bg-purple-500/15 dark:bg-purple-950/40";
+      case 'green':
+        return "bg-green-500/15 dark:bg-green-950/40";
+      case 'orange':
+        return "bg-orange-500/15 dark:bg-orange-950/40";
+      default:
+        return "bg-card/80";
+    }
+  };
 
   return (
     <div className="flex w-full h-screen overflow-hidden">
@@ -145,7 +184,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
           isSidebarCollapsed ? "w-16" : "w-64")}>
           <div className={cn("h-full border-r fixed", isSidebarCollapsed ? "w-16" : "w-64")}>
             {isSidebarCollapsed ? (
-              <div className="h-full flex flex-col bg-card/80 w-full items-center py-4">
+              <div className={cn("h-full flex flex-col w-full items-center py-4", getSidebarBgClass())}>
                 <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg mb-6">D</div>
                 <div className="flex-1 w-full flex flex-col items-center">
                   <nav className="w-full grid gap-2 px-2">

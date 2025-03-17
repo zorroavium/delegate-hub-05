@@ -6,19 +6,22 @@ import { Label } from '@/components/ui/label';
 import { useTheme } from '@/components/theme/theme-provider';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 
 export function ThemeSettings() {
-  const { theme, setTheme, themeColor, setThemeColor } = useTheme();
+  const { theme, setTheme, themeColor, setThemeColor, sidebarColor, setSidebarColor } = useTheme();
   const [activeThemeColor, setActiveThemeColor] = useState(themeColor || 'blue');
+  const [applySidebarColor, setApplySidebarColor] = useState(sidebarColor);
 
   const handleSaveThemeColor = () => {
     setThemeColor(activeThemeColor);
+    setSidebarColor(applySidebarColor);
     
     toast({
       title: "Theme color updated",
-      description: `Theme color set to ${activeThemeColor.charAt(0).toUpperCase() + activeThemeColor.slice(1)}.`
+      description: `Theme color set to ${activeThemeColor.charAt(0).toUpperCase() + activeThemeColor.slice(1)}. ${applySidebarColor ? 'Sidebar color applied.' : 'Sidebar color disabled.'}`
     });
   };
 
@@ -112,6 +115,16 @@ export function ThemeSettings() {
             <span className="text-sm">Orange</span>
           </div>
         </div>
+
+        <div className="flex items-center space-x-2 mt-4">
+          <Switch
+            id="apply-sidebar-color"
+            checked={applySidebarColor}
+            onCheckedChange={setApplySidebarColor}
+          />
+          <Label htmlFor="apply-sidebar-color">Apply theme color to sidebar</Label>
+        </div>
+        
         <Button onClick={handleSaveThemeColor} className="mt-4">Save Theme Color</Button>
       </CardContent>
     </>

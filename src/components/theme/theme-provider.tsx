@@ -11,6 +11,8 @@ type ThemeContextType = {
   setTheme: (theme: ThemeType) => void;
   themeColor: string;
   setThemeColor: (color: string) => void;
+  sidebarColor: boolean;
+  setSidebarColor: (enabled: boolean) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -20,11 +22,19 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [themeColor, setThemeColorState] = React.useState<string>(
     localStorage.getItem('themeColor') || 'blue'
   );
+  const [sidebarColor, setSidebarColorState] = React.useState<boolean>(
+    localStorage.getItem('sidebarColor') === 'true'
+  );
 
   const setThemeColor = (color: string) => {
     setThemeColorState(color);
     localStorage.setItem('themeColor', color);
     applyThemeColor(color);
+  };
+  
+  const setSidebarColor = (enabled: boolean) => {
+    setSidebarColorState(enabled);
+    localStorage.setItem('sidebarColor', String(enabled));
   };
 
   // Apply theme class to document element
@@ -53,6 +63,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     } else {
       applyThemeColor('blue');
     }
+    
+    // Load saved sidebar color preference
+    const savedSidebarColor = localStorage.getItem('sidebarColor');
+    setSidebarColorState(savedSidebarColor === 'true');
   }, []);
 
   // Function to apply theme color to CSS variables
@@ -93,7 +107,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, themeColor, setThemeColor }}>
+    <ThemeContext.Provider value={{ theme, setTheme, themeColor, setThemeColor, sidebarColor, setSidebarColor }}>
       {children}
     </ThemeContext.Provider>
   );

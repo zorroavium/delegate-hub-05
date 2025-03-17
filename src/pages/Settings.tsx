@@ -52,10 +52,6 @@ const SettingsPage = () => {
   });
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
 
-  // Theme and appearance state
-  const [darkMode, setDarkMode] = useState(false);
-  const [activeThemeColor, setActiveThemeColor] = useState('blue');
-
   // Notification states
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -188,21 +184,6 @@ const SettingsPage = () => {
       description: "Your notification preferences have been updated successfully."
     });
   };
-
-  // Save appearance settings
-  const handleSaveAppearance = () => {
-    // Store theme preferences in localStorage
-    localStorage.setItem('themeColor', activeThemeColor);
-    localStorage.setItem('darkMode', darkMode.toString());
-    
-    // Apply theme color to document root
-    document.documentElement.style.setProperty('--theme-primary', getThemeColorValue(activeThemeColor));
-    
-    toast({
-      title: "Appearance settings saved",
-      description: `Theme color set to ${activeThemeColor.charAt(0).toUpperCase() + activeThemeColor.slice(1)}. Dark mode has been ${darkMode ? 'enabled' : 'disabled'}.`
-    });
-  };
   
   // Connect integration
   const handleConnectIntegration = (integration: 'googleCalendar' | 'slack' | 'trello') => {
@@ -224,17 +205,6 @@ const SettingsPage = () => {
     });
   };
 
-  // Get CSS variable value based on selected theme color
-  const getThemeColorValue = (color: string): string => {
-    switch (color) {
-      case 'blue': return '#2563eb';
-      case 'purple': return '#8b5cf6';
-      case 'green': return '#10b981';
-      case 'orange': return '#f97316';
-      default: return '#2563eb';
-    }
-  };
-
   // Load saved settings from localStorage on initial render
   useEffect(() => {
     // Load profile data
@@ -254,18 +224,6 @@ const SettingsPage = () => {
       setTaskStatusNotifs(settings.taskStatus);
       setTaskDueNotifs(settings.taskDue);
       setCommentsNotifs(settings.comments);
-    }
-    
-    // Load theme settings
-    const savedThemeColor = localStorage.getItem('themeColor');
-    if (savedThemeColor) {
-      setActiveThemeColor(savedThemeColor);
-      document.documentElement.style.setProperty('--theme-primary', getThemeColorValue(savedThemeColor));
-    }
-    
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode) {
-      setDarkMode(savedDarkMode === 'true');
     }
     
     // Load integration settings
@@ -496,46 +454,6 @@ const SettingsPage = () => {
                   </CardDescription>
                 </CardHeader>
                 <ThemeSettings />
-                <CardContent className="space-y-6">
-                  
-                  <Separator />
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Theme Colors</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="flex flex-col items-center space-y-2">
-                        <div 
-                          className={`w-10 h-10 rounded-full bg-blue-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-blue-500 ${activeThemeColor === 'blue' ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
-                          onClick={() => setActiveThemeColor('blue')}
-                        ></div>
-                        <span className="text-sm">Blue</span>
-                      </div>
-                      <div className="flex flex-col items-center space-y-2">
-                        <div 
-                          className={`w-10 h-10 rounded-full bg-purple-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-purple-500 ${activeThemeColor === 'purple' ? 'ring-2 ring-offset-2 ring-purple-500' : ''}`}
-                          onClick={() => setActiveThemeColor('purple')}
-                        ></div>
-                        <span className="text-sm">Purple</span>
-                      </div>
-                      <div className="flex flex-col items-center space-y-2">
-                        <div 
-                          className={`w-10 h-10 rounded-full bg-green-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-green-500 ${activeThemeColor === 'green' ? 'ring-2 ring-offset-2 ring-green-500' : ''}`}
-                          onClick={() => setActiveThemeColor('green')}
-                        ></div>
-                        <span className="text-sm">Green</span>
-                      </div>
-                      <div className="flex flex-col items-center space-y-2">
-                        <div 
-                          className={`w-10 h-10 rounded-full bg-orange-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-orange-500 ${activeThemeColor === 'orange' ? 'ring-2 ring-offset-2 ring-orange-500' : ''}`}
-                          onClick={() => setActiveThemeColor('orange')}
-                        ></div>
-                        <span className="text-sm">Orange</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button onClick={handleSaveAppearance}>Save Appearance</Button>
-                </CardContent>
               </Card>
             </TabsContent>
 
@@ -620,8 +538,8 @@ const SettingsPage = () => {
                   <div className="grid gap-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center">
-                          <Mail className="text-blue-600" />
+                        <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                          <Mail className="text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
                           <h4 className="text-base font-medium">Google Calendar</h4>
@@ -638,8 +556,8 @@ const SettingsPage = () => {
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-green-100 flex items-center justify-center">
-                          <MessageSquare className="text-green-600" />
+                        <div className="w-12 h-12 rounded-md bg-green-100 flex items-center justify-center dark:bg-green-900/50">
+                          <MessageSquare className="text-green-600 dark:text-green-400" />
                         </div>
                         <div>
                           <h4 className="text-base font-medium">Slack</h4>
@@ -656,8 +574,8 @@ const SettingsPage = () => {
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center">
-                          <Globe className="text-purple-600" />
+                        <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
+                          <Globe className="text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
                           <h4 className="text-base font-medium">Trello</h4>
