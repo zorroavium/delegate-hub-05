@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { TaskCard } from './task-card';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowRight } from 'lucide-react';
 import { CustomButton } from '../ui/custom-button';
 import { CreateTaskDialog } from '../tasks/create-task-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -30,30 +30,31 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   // Get status color class from statusColor prop
   const getStatusColor = () => {
     const baseColor = statusColor.replace('bg-', '');
-    return `border-${baseColor}/30 bg-${baseColor}/5`;
+    return `border-${baseColor}/40 bg-${baseColor}/5`;
   };
 
   return (
     <div 
       className={cn(
-        'flex flex-col overflow-hidden rounded-xl border shadow-sm transition-all duration-300',
+        'flex flex-col overflow-hidden rounded-xl border shadow-md transition-all duration-300',
         getStatusColor()
       )}
     >
       {/* Column header */}
-      <div className="p-3 font-medium border-b flex justify-between items-center">
+      <div className="p-4 font-medium border-b flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className={cn("w-2.5 h-2.5 rounded-full", statusColor)} />
-          <span>{title}</span>
-          <span className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-normal rounded-full px-2">
+          <div className={cn("w-3 h-3 rounded-full", statusColor)} />
+          <span className="font-semibold">{title}</span>
+          <span className="bg-background border text-muted-foreground text-xs font-medium rounded-full px-2 py-0.5">
             {tasks.length}
           </span>
         </div>
         {onAddTask && (
           <button 
             onClick={onAddTask}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors hover:bg-background rounded-full p-1"
             type="button"
+            aria-label={`Add task to ${title}`}
           >
             <Plus size={18} />
           </button>
@@ -62,19 +63,26 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       
       {/* Tasks - Droppable container */}
       <Droppable droppableId={droppableId}>
-        {(provided) => (
+        {(provided, snapshot) => (
           <div 
-            className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[400px]"
+            className={cn(
+              "flex-1 overflow-y-auto p-3 space-y-3 min-h-[450px]",
+              snapshot.isDraggingOver && "bg-accent/10"
+            )}
             ref={provided.innerRef}
             {...provided.droppableProps}
           >
             {tasks.map((task, index) => (
               <Draggable key={task.id} draggableId={task.id} index={index}>
-                {(provided) => (
+                {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
+                    className={cn(
+                      "transition-all duration-200 transform",
+                      snapshot.isDragging && "scale-[1.02] rotate-1 shadow-lg"
+                    )}
                   >
                     <TaskCard task={task} />
                   </div>
@@ -84,8 +92,16 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
             {provided.placeholder}
             
             {tasks.length === 0 && (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                <p className="text-center">No tasks</p>
+              <div className="h-full flex flex-col items-center justify-center text-gray-400 py-8">
+                <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center mb-2">
+                  {status === 'completed' ? (
+                    <CheckCircle2 size={20} className="text-gray-300 dark:text-gray-700" />
+                  ) : (
+                    <ArrowRight size={20} className="text-gray-300 dark:text-gray-700" />
+                  )}
+                </div>
+                <p className="text-center text-sm">No tasks</p>
+                <p className="text-center text-xs text-gray-400">Drop tasks here</p>
               </div>
             )}
           </div>
@@ -94,14 +110,14 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       
       {/* Add task button at bottom */}
       {onAddTask && (
-        <div className="p-3 border-t">
+        <div className="p-3 border-t bg-background/50">
           <CustomButton
             variant="ghost"
             size="sm"
             fullWidth
             icon={<Plus size={16} />}
             onClick={onAddTask}
-            className="text-gray-500 justify-center"
+            className="text-muted-foreground justify-center hover:text-foreground hover:bg-accent/20"
             type="button"
           >
             Add Task
@@ -238,3 +254,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
     </>
   );
 };
+
+// Missing imports for the newly added icon
+import { CheckCircle2 } from 'lucide-react';

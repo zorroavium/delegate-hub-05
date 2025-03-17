@@ -68,7 +68,12 @@ const Index = () => {
 
         {/* Kanban Board */}
         <div className="w-full">
-          <h2 className="text-xl font-semibold mb-4">Task Overview</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Task Overview</h2>
+            <div className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+              Drag tasks between columns to update status
+            </div>
+          </div>
           <KanbanBoard />
         </div>
       </div>

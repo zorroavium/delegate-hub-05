@@ -3,9 +3,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
-import { Calendar, Clock, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, MoreHorizontal, AlertTriangle, CheckCircle, Clock3 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Task } from '@/store/useTaskStore';
+import { Badge } from '@/components/ui/badge';
 
 interface TaskCardProps {
   task: Task;
@@ -56,6 +57,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
     return dueDate < today && task.status !== 'completed';
   };
 
+  // Get progress status icon
+  const getProgressIcon = () => {
+    if (task.status === 'completed') {
+      return <CheckCircle size={14} className="text-green-500" />;
+    } else if (isPastDue()) {
+      return <AlertTriangle size={14} className="text-red-500" />;
+    } else if (task.progress > 0) {
+      return <Clock3 size={14} className="text-amber-500" />;
+    }
+    return null;
+  };
+
   return (
     <Link
       to={`/task/${task.id}`}
@@ -66,14 +79,23 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
       )}
     >
       <div className="space-y-3">
-        {/* Task title and actions */}
+        {/* Priority badge - top right */}
+        <div className="flex justify-end mb-1">
+          <Badge 
+            variant="outline" 
+            className={cn(
+              'text-xs px-2 py-0.5 font-medium rounded-full',
+              getPriorityClass()
+            )}
+          >
+            {task.priority === 'high' && <AlertTriangle size={12} className="mr-1 inline" />}
+            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+          </Badge>
+        </div>
+
+        {/* Task title */}
         <div className="flex items-start justify-between">
           <h3 className="font-medium text-balance line-clamp-2">{task.title}</h3>
-          <div className="flex items-center">
-            <button className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <MoreHorizontal size={16} />
-            </button>
-          </div>
         </div>
 
         {/* Description */}
@@ -83,36 +105,37 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
 
         {/* Progress bar */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span>Progress</span>
-            <span>{task.progress}%</span>
+          <div className="flex justify-between text-xs items-center">
+            <span className="flex items-center gap-1">
+              {getProgressIcon()}
+              Progress
+            </span>
+            <span className="font-medium">{task.progress}%</span>
           </div>
-          <Progress value={task.progress} className="h-1.5" />
+          <Progress 
+            value={task.progress} 
+            className="h-1.5" 
+            indicatorClassName={task.status === 'completed' ? 'bg-green-500' : undefined}
+          />
         </div>
 
         {/* Footer with metadata */}
-        <div className="flex items-center justify-between">
-          {/* Priority and date */}
-          <div className="flex items-center space-x-2">
-            <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', getPriorityClass())}>
-              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+        <div className="flex items-center justify-between pt-2 mt-2 border-t border-border/30">
+          {/* Due date */}
+          <div className="flex items-center text-xs text-muted-foreground">
+            <Calendar size={14} className="mr-1" />
+            <span className={cn(
+              isPastDue() && 'text-status-delayed font-medium flex items-center gap-1',
+            )}>
+              {formatDate(task.dueDate)}
+              {isPastDue() && <AlertTriangle size={12} />}
             </span>
-            
-            <div className="flex items-center text-xs text-muted-foreground">
-              <Calendar size={14} className="mr-1" />
-              <span className={cn(
-                isPastDue() && 'text-status-delayed font-medium flex items-center gap-1',
-              )}>
-                {formatDate(task.dueDate)}
-                {isPastDue() && <AlertTriangle size={12} />}
-              </span>
-            </div>
           </div>
 
           {/* Assignee */}
-          <Avatar className="h-7 w-7 border border-border">
-            <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-xs font-medium">
-              {task.assignee.name.split(' ').map(n => n[0]).join('')}
+          <Avatar className={`h-7 w-7 border border-border ${task.assignee.color || 'bg-primary'}`}>
+            <div className="flex items-center justify-center w-full h-full text-xs font-medium text-white">
+              {task.assignee.avatar || task.assignee.name.split(' ').map(n => n[0]).join('')}
             </div>
           </Avatar>
         </div>
