@@ -60,7 +60,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, className }) => {
     <Link
       to={`/task/${task.id}`}
       className={cn(
-        'block bg-card hover:bg-accent/5 rounded-lg border border-l-4 shadow-sm p-4 transition-all duration-300 hover:shadow-md',
+        'block bg-card hover:bg-accent/5 rounded-lg border border-l-4 shadow-sm p-4 transition-all duration-300 hover:shadow-md max-w-md mx-auto lg:mx-0',
         getStatusClass(),
         className
       )}

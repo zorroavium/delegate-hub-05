@@ -201,10 +201,20 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ className }) => {
     } 
   };
 
+  // Determine grid columns based on number of statuses
+  const getGridCols = () => {
+    const statusCount = sortedStatuses.length;
+    if (statusCount <= 3) return 'md:grid-cols-3';
+    if (statusCount === 4) return 'md:grid-cols-4';
+    if (statusCount === 5) return 'md:grid-cols-5 xl:grid-cols-5';
+    if (statusCount === 6) return 'md:grid-cols-3 lg:grid-cols-6 xl:grid-cols-6';
+    return 'md:grid-cols-4 lg:grid-cols-7 xl:grid-cols-7'; // For 7+ statuses
+  };
+
   return (
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6', className)}>
+        <div className={cn(`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(sortedStatuses.length, 4)} gap-6 max-w-7xl mx-auto`, getGridCols(), className)}>
           {sortedStatuses.map((status) => (
             <KanbanColumn 
               key={status.id}

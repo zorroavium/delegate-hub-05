@@ -11,6 +11,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { useEmployeeStore, Employee } from '@/store/useEmployeeStore';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Trash, Plus } from 'lucide-react';
+import { z } from 'zod';
+
+// Define validation schema
+const employeeSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  role: z.string().min(1, "Role is required"),
+  department: z.string().min(1, "Department is required"),
+  status: z.enum(["active", "inactive", "on-leave"]),
+  phone: z.string().optional(),
+  skills: z.array(z.string()),
+  location: z.string().min(1, "Location is required"),
+  joinDate: z.string().min(1, "Join date is required")
+});
 
 export const EmployeeManagement = () => {
   const { employees, addEmployee, updateEmployee, removeEmployee } = useEmployeeStore();
@@ -19,6 +33,8 @@ export const EmployeeManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     email: '',
@@ -33,7 +49,35 @@ export const EmployeeManagement = () => {
     joinDate: new Date().toISOString().split('T')[0]
   });
 
+  const validateForm = (data: any, setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>) => {
+    try {
+      employeeSchema.parse(data);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            newErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setErrors(newErrors);
+      }
+      return false;
+    }
+  };
+
   const handleAddEmployee = () => {
+    if (!validateForm(newEmployee, setFormErrors)) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const avatarInitials = newEmployee.name
       .split(' ')
       .map(name => name[0])
@@ -56,6 +100,15 @@ export const EmployeeManagement = () => {
 
   const handleEditEmployee = () => {
     if (!selectedEmployee) return;
+
+    if (!validateForm(selectedEmployee, setEditFormErrors)) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
 
     updateEmployee(selectedEmployee.id, selectedEmployee);
     toast({
@@ -120,16 +173,34 @@ export const EmployeeManagement = () => {
       location: '',
       joinDate: new Date().toISOString().split('T')[0]
     });
+    setFormErrors({});
   };
 
   const openEditDialog = (employee: any) => {
     setSelectedEmployee({ ...employee });
     setIsEditDialogOpen(true);
+    setEditFormErrors({});
   };
 
   const openDeleteDialog = (employee: any) => {
     setSelectedEmployee(employee);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleSkillsChange = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
+    const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(Boolean);
+    
+    if (isEdit && selectedEmployee) {
+      setSelectedEmployee(prev => ({
+        ...prev,
+        skills: skillsArray,
+      }));
+    } else {
+      setNewEmployee(prev => ({
+        ...prev,
+        skills: skillsArray,
+      }));
+    }
   };
 
   return (
@@ -223,17 +294,19 @@ export const EmployeeManagement = () => {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
                   <Input
                     id="name"
                     name="name"
                     value={newEmployee.name}
                     onChange={handleInputChange}
                     placeholder="John Doe"
+                    className={formErrors.name ? "border-red-500" : ""}
                   />
+                  {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
                   <Input
                     id="email"
                     name="email"
@@ -241,15 +314,17 @@ export const EmployeeManagement = () => {
                     value={newEmployee.email}
                     onChange={handleInputChange}
                     placeholder="john.doe@example.com"
+                    className={formErrors.email ? "border-red-500" : ""}
                   />
+                  {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">Role <span className="text-red-500">*</span></Label>
                   <Select
                     value={newEmployee.role}
                     onValueChange={(value) => handleSelectChange('role', value)}
                   >
-                    <SelectTrigger id="role">
+                    <SelectTrigger id="role" className={formErrors.role ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -263,14 +338,15 @@ export const EmployeeManagement = () => {
                       <SelectItem value="Articled Audit Assistant">Articled Audit Assistant</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formErrors.role && <p className="text-red-500 text-xs mt-1">{formErrors.role}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department">Department <span className="text-red-500">*</span></Label>
                   <Select
                     value={newEmployee.department}
                     onValueChange={(value) => handleSelectChange('department', value)}
                   >
-                    <SelectTrigger id="department">
+                    <SelectTrigger id="department" className={formErrors.department ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -279,12 +355,13 @@ export const EmployeeManagement = () => {
                       <SelectItem value="Audit & Assurance">Audit & Assurance</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formErrors.department && <p className="text-red-500 text-xs mt-1">{formErrors.department}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
                   <Select
                     value={newEmployee.status}
-                    onValueChange={(value) => handleSelectChange('status', value)}
+                    onValueChange={(value) => handleSelectChange('status', value as 'active' | 'inactive' | 'on-leave')}
                   >
                     <SelectTrigger id="status">
                       <SelectValue placeholder="Select status" />
@@ -307,24 +384,28 @@ export const EmployeeManagement = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="location">Location <span className="text-red-500">*</span></Label>
                   <Input
                     id="location"
                     name="location"
                     value={newEmployee.location}
                     onChange={handleInputChange}
                     placeholder="New York, NY"
+                    className={formErrors.location ? "border-red-500" : ""}
                   />
+                  {formErrors.location && <p className="text-red-500 text-xs mt-1">{formErrors.location}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="joinDate">Join Date</Label>
+                  <Label htmlFor="joinDate">Join Date <span className="text-red-500">*</span></Label>
                   <Input
                     id="joinDate"
                     name="joinDate"
                     type="date"
                     value={newEmployee.joinDate}
                     onChange={handleInputChange}
+                    className={formErrors.joinDate ? "border-red-500" : ""}
                   />
+                  {formErrors.joinDate && <p className="text-red-500 text-xs mt-1">{formErrors.joinDate}</p>}
                 </div>
               </div>
               <div className="space-y-2">
@@ -333,19 +414,17 @@ export const EmployeeManagement = () => {
                   id="skills"
                   name="skills"
                   value={Array.isArray(newEmployee.skills) ? newEmployee.skills.join(', ') : ''}
-                  onChange={(e) => {
-                    const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(Boolean);
-                    setNewEmployee(prev => ({
-                      ...prev,
-                      skills: skillsArray,
-                    }));
-                  }}
+                  onChange={(e) => handleSkillsChange(e)}
                   placeholder="Auditing, Tax Planning, Financial Analysis"
                 />
+                <p className="text-xs text-muted-foreground">Separate multiple skills with commas</p>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsAddDialogOpen(false);
+                resetForm();
+              }}>
                 Cancel
               </Button>
               <Button onClick={handleAddEmployee}>
@@ -368,31 +447,35 @@ export const EmployeeManagement = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="edit-name">Full Name</Label>
+                    <Label htmlFor="edit-name">Full Name <span className="text-red-500">*</span></Label>
                     <Input
                       id="edit-name"
                       name="name"
                       value={selectedEmployee.name}
                       onChange={handleEditInputChange}
+                      className={editFormErrors.name ? "border-red-500" : ""}
                     />
+                    {editFormErrors.name && <p className="text-red-500 text-xs mt-1">{editFormErrors.name}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-email">Email</Label>
+                    <Label htmlFor="edit-email">Email <span className="text-red-500">*</span></Label>
                     <Input
                       id="edit-email"
                       name="email"
                       type="email"
                       value={selectedEmployee.email}
                       onChange={handleEditInputChange}
+                      className={editFormErrors.email ? "border-red-500" : ""}
                     />
+                    {editFormErrors.email && <p className="text-red-500 text-xs mt-1">{editFormErrors.email}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-role">Role</Label>
+                    <Label htmlFor="edit-role">Role <span className="text-red-500">*</span></Label>
                     <Select
                       value={selectedEmployee.role}
                       onValueChange={(value) => handleEditSelectChange('role', value)}
                     >
-                      <SelectTrigger id="edit-role">
+                      <SelectTrigger id="edit-role" className={editFormErrors.role ? "border-red-500" : ""}>
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -406,14 +489,15 @@ export const EmployeeManagement = () => {
                         <SelectItem value="Articled Audit Assistant">Articled Audit Assistant</SelectItem>
                       </SelectContent>
                     </Select>
+                    {editFormErrors.role && <p className="text-red-500 text-xs mt-1">{editFormErrors.role}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-department">Department</Label>
+                    <Label htmlFor="edit-department">Department <span className="text-red-500">*</span></Label>
                     <Select
                       value={selectedEmployee.department}
                       onValueChange={(value) => handleEditSelectChange('department', value)}
                     >
-                      <SelectTrigger id="edit-department">
+                      <SelectTrigger id="edit-department" className={editFormErrors.department ? "border-red-500" : ""}>
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -422,12 +506,13 @@ export const EmployeeManagement = () => {
                         <SelectItem value="Audit & Assurance">Audit & Assurance</SelectItem>
                       </SelectContent>
                     </Select>
+                    {editFormErrors.department && <p className="text-red-500 text-xs mt-1">{editFormErrors.department}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-status">Status</Label>
+                    <Label htmlFor="edit-status">Status <span className="text-red-500">*</span></Label>
                     <Select
                       value={selectedEmployee.status}
-                      onValueChange={(value) => handleEditSelectChange('status', value)}
+                      onValueChange={(value) => handleEditSelectChange('status', value as 'active' | 'inactive' | 'on-leave')}
                     >
                       <SelectTrigger id="edit-status">
                         <SelectValue placeholder="Select status" />
@@ -449,23 +534,27 @@ export const EmployeeManagement = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-location">Location</Label>
+                    <Label htmlFor="edit-location">Location <span className="text-red-500">*</span></Label>
                     <Input
                       id="edit-location"
                       name="location"
                       value={selectedEmployee.location}
                       onChange={handleEditInputChange}
+                      className={editFormErrors.location ? "border-red-500" : ""}
                     />
+                    {editFormErrors.location && <p className="text-red-500 text-xs mt-1">{editFormErrors.location}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="edit-joinDate">Join Date</Label>
+                    <Label htmlFor="edit-joinDate">Join Date <span className="text-red-500">*</span></Label>
                     <Input
                       id="edit-joinDate"
                       name="joinDate"
                       type="date"
                       value={selectedEmployee.joinDate?.split('T')[0]}
                       onChange={handleEditInputChange}
+                      className={editFormErrors.joinDate ? "border-red-500" : ""}
                     />
+                    {editFormErrors.joinDate && <p className="text-red-500 text-xs mt-1">{editFormErrors.joinDate}</p>}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -474,14 +563,10 @@ export const EmployeeManagement = () => {
                     id="edit-skills"
                     name="skills"
                     value={Array.isArray(selectedEmployee.skills) ? selectedEmployee.skills.join(', ') : ''}
-                    onChange={(e) => {
-                      const skillsArray = e.target.value.split(',').map(skill => skill.trim()).filter(Boolean);
-                      setSelectedEmployee(prev => ({
-                        ...prev,
-                        skills: skillsArray,
-                      }));
-                    }}
+                    onChange={(e) => handleSkillsChange(e, true)}
+                    placeholder="Auditing, Tax Planning, Financial Analysis"
                   />
+                  <p className="text-xs text-muted-foreground">Separate multiple skills with commas</p>
                 </div>
               </div>
             )}

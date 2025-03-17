@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,26 +14,266 @@ import { toast } from "@/hooks/use-toast";
 import { TaskStatusSettings } from '@/components/settings/task-status-settings';
 import { EmployeeManagement } from '@/components/settings/employee-management';
 import { ThemeSettings } from '@/components/settings/theme-settings';
+import { z } from 'zod';
+
+// Validation schema for profile form
+const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  role: z.string().min(1, "Role is required"),
+  department: z.string().min(1, "Department is required"),
+});
+
+// Validation schema for password form
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
 
 const SettingsPage = () => {
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    role: 'manager',
+    department: 'operations'
+  });
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
+
+  // Password form state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+
+  // Theme and appearance state
   const [darkMode, setDarkMode] = useState(false);
+  const [activeThemeColor, setActiveThemeColor] = useState('blue');
+
+  // Notification states
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [whatsappNotifications, setWhatsappNotifications] = useState(false);
-  
+  const [taskAssignedNotifs, setTaskAssignedNotifs] = useState(true);
+  const [taskStatusNotifs, setTaskStatusNotifs] = useState(true);
+  const [taskDueNotifs, setTaskDueNotifs] = useState(true);
+  const [commentsNotifs, setCommentsNotifs] = useState(true);
+
+  // Integration states
+  const [integrations, setIntegrations] = useState({
+    googleCalendar: false,
+    slack: false,
+    trello: false
+  });
+
+  // Handle profile form changes
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle select changes for profile
+  const handleProfileSelectChange = (name: string, value: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle password form changes
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Save profile information
+  const handleSaveProfile = () => {
+    try {
+      profileSchema.parse(profileData);
+      setProfileErrors({});
+      
+      // In a real app, you would send this to an API
+      // For now, just show a success toast
+      localStorage.setItem('profileData', JSON.stringify(profileData));
+      
+      toast({
+        title: "Profile saved",
+        description: "Your profile information has been updated successfully."
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            newErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setProfileErrors(newErrors);
+        
+        toast({
+          title: "Error saving profile",
+          description: "Please check the form for errors",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  // Update password
+  const handleUpdatePassword = () => {
+    try {
+      passwordSchema.parse(passwordData);
+      setPasswordErrors({});
+      
+      // In a real app, you would verify the current password and update with new one
+      // For now, just show a success toast and reset the form
+      toast({
+        title: "Password updated",
+        description: "Your password has been changed successfully."
+      });
+      
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            newErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setPasswordErrors(newErrors);
+        
+        toast({
+          title: "Error updating password",
+          description: "Please check the form for errors",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  // Save notification settings
   const handleSaveNotifications = () => {
+    // Store notification preferences in localStorage
+    const notificationSettings = {
+      email: emailNotifications,
+      push: pushNotifications,
+      whatsapp: whatsappNotifications,
+      taskAssigned: taskAssignedNotifs,
+      taskStatus: taskStatusNotifs,
+      taskDue: taskDueNotifs,
+      comments: commentsNotifs
+    };
+    
+    localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
+    
     toast({
       title: "Notification settings saved",
       description: "Your notification preferences have been updated successfully."
     });
   };
 
+  // Save appearance settings
   const handleSaveAppearance = () => {
+    // Store theme preferences in localStorage
+    localStorage.setItem('themeColor', activeThemeColor);
+    localStorage.setItem('darkMode', darkMode.toString());
+    
+    // Apply theme color to document root
+    document.documentElement.style.setProperty('--theme-primary', getThemeColorValue(activeThemeColor));
+    
     toast({
       title: "Appearance settings saved",
-      description: `Dark mode has been ${darkMode ? 'enabled' : 'disabled'}.`
+      description: `Theme color set to ${activeThemeColor.charAt(0).toUpperCase() + activeThemeColor.slice(1)}. Dark mode has been ${darkMode ? 'enabled' : 'disabled'}.`
     });
   };
+  
+  // Connect integration
+  const handleConnectIntegration = (integration: 'googleCalendar' | 'slack' | 'trello') => {
+    setIntegrations(prev => ({
+      ...prev,
+      [integration]: !prev[integration]
+    }));
+    
+    const status = !integrations[integration] ? 'connected' : 'disconnected';
+    const integrationNames = {
+      googleCalendar: 'Google Calendar',
+      slack: 'Slack',
+      trello: 'Trello'
+    };
+    
+    toast({
+      title: `Integration ${status}`,
+      description: `${integrationNames[integration]} has been ${status} successfully.`
+    });
+  };
+
+  // Get CSS variable value based on selected theme color
+  const getThemeColorValue = (color: string): string => {
+    switch (color) {
+      case 'blue': return '#2563eb';
+      case 'purple': return '#8b5cf6';
+      case 'green': return '#10b981';
+      case 'orange': return '#f97316';
+      default: return '#2563eb';
+    }
+  };
+
+  // Load saved settings from localStorage on initial render
+  useEffect(() => {
+    // Load profile data
+    const savedProfileData = localStorage.getItem('profileData');
+    if (savedProfileData) {
+      setProfileData(JSON.parse(savedProfileData));
+    }
+    
+    // Load notification settings
+    const savedNotificationSettings = localStorage.getItem('notificationSettings');
+    if (savedNotificationSettings) {
+      const settings = JSON.parse(savedNotificationSettings);
+      setEmailNotifications(settings.email);
+      setPushNotifications(settings.push);
+      setWhatsappNotifications(settings.whatsapp);
+      setTaskAssignedNotifs(settings.taskAssigned);
+      setTaskStatusNotifs(settings.taskStatus);
+      setTaskDueNotifs(settings.taskDue);
+      setCommentsNotifs(settings.comments);
+    }
+    
+    // Load theme settings
+    const savedThemeColor = localStorage.getItem('themeColor');
+    if (savedThemeColor) {
+      setActiveThemeColor(savedThemeColor);
+      document.documentElement.style.setProperty('--theme-primary', getThemeColorValue(savedThemeColor));
+    }
+    
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode) {
+      setDarkMode(savedDarkMode === 'true');
+    }
+    
+    // Load integration settings
+    const savedIntegrations = localStorage.getItem('integrations');
+    if (savedIntegrations) {
+      setIntegrations(JSON.parse(savedIntegrations));
+    }
+  }, []);
 
   return (
     <SidebarLayout>
@@ -48,7 +288,6 @@ const SettingsPage = () => {
             <Settings2 size={16} />
               <span className="hidden md:inline">General</span>
             </TabsTrigger>
-            {/* <TabsTrigger value="general">Employees</TabsTrigger> */}
             <TabsTrigger value="notifications" className="flex items-center gap-2 px-4 py-2">
               <Bell size={16} />
               <span className="hidden md:inline">Notifications</span>
@@ -85,16 +324,37 @@ const SettingsPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
-                      <Input id="name" defaultValue="John Doe" />
+                      <Input 
+                        id="name" 
+                        name="name"
+                        value={profileData.name} 
+                        onChange={handleProfileChange}
+                        className={profileErrors.name ? "border-red-500" : ""}
+                      />
+                      {profileErrors.name && <p className="text-red-500 text-xs mt-1">{profileErrors.name}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" defaultValue="john.doe@example.com" type="email" />
+                      <Input 
+                        id="email" 
+                        name="email"
+                        value={profileData.email} 
+                        onChange={handleProfileChange}
+                        type="email"
+                        className={profileErrors.email ? "border-red-500" : ""}
+                      />
+                      {profileErrors.email && <p className="text-red-500 text-xs mt-1">{profileErrors.email}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
-                      <Select defaultValue="manager">
-                        <SelectTrigger id="role">
+                      <Select 
+                        value={profileData.role}
+                        onValueChange={(value) => handleProfileSelectChange('role', value)}
+                      >
+                        <SelectTrigger 
+                          id="role"
+                          className={profileErrors.role ? "border-red-500" : ""}
+                        >
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
                         <SelectContent>
@@ -103,11 +363,18 @@ const SettingsPage = () => {
                           <SelectItem value="admin">Administrator</SelectItem>
                         </SelectContent>
                       </Select>
+                      {profileErrors.role && <p className="text-red-500 text-xs mt-1">{profileErrors.role}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="department">Department</Label>
-                      <Select defaultValue="operations">
-                        <SelectTrigger id="department">
+                      <Select 
+                        value={profileData.department}
+                        onValueChange={(value) => handleProfileSelectChange('department', value)}
+                      >
+                        <SelectTrigger 
+                          id="department"
+                          className={profileErrors.department ? "border-red-500" : ""}
+                        >
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
                         <SelectContent>
@@ -117,9 +384,10 @@ const SettingsPage = () => {
                           <SelectItem value="hr">Human Resources</SelectItem>
                         </SelectContent>
                       </Select>
+                      {profileErrors.department && <p className="text-red-500 text-xs mt-1">{profileErrors.department}</p>}
                     </div>
                   </div>
-                  <Button className="mt-4">Save Changes</Button>
+                  <Button className="mt-4" onClick={handleSaveProfile}>Save Changes</Button>
                 </div>
                 </CardContent>
               </Card>
@@ -180,19 +448,35 @@ const SettingsPage = () => {
                     <h3 className="text-lg font-medium">Notification Types</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="flex items-center space-x-2">
-                        <Switch id="task-assigned" defaultChecked />
+                        <Switch 
+                          id="task-assigned" 
+                          checked={taskAssignedNotifs}
+                          onCheckedChange={setTaskAssignedNotifs}
+                        />
                         <Label htmlFor="task-assigned">Task Assignment</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch id="task-status" defaultChecked />
+                        <Switch 
+                          id="task-status" 
+                          checked={taskStatusNotifs}
+                          onCheckedChange={setTaskStatusNotifs}
+                        />
                         <Label htmlFor="task-status">Task Status Changes</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch id="task-due" defaultChecked />
+                        <Switch 
+                          id="task-due" 
+                          checked={taskDueNotifs}
+                          onCheckedChange={setTaskDueNotifs}
+                        />
                         <Label htmlFor="task-due">Task Due Date Reminders</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch id="comments" defaultChecked />
+                        <Switch 
+                          id="comments" 
+                          checked={commentsNotifs}
+                          onCheckedChange={setCommentsNotifs}
+                        />
                         <Label htmlFor="comments">Comments & Mentions</Label>
                       </div>
                     </div>
@@ -220,19 +504,31 @@ const SettingsPage = () => {
                     <h3 className="text-lg font-medium">Theme Colors</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="w-10 h-10 rounded-full bg-blue-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-blue-500"></div>
+                        <div 
+                          className={`w-10 h-10 rounded-full bg-blue-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-blue-500 ${activeThemeColor === 'blue' ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
+                          onClick={() => setActiveThemeColor('blue')}
+                        ></div>
                         <span className="text-sm">Blue</span>
                       </div>
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="w-10 h-10 rounded-full bg-purple-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-purple-500"></div>
+                        <div 
+                          className={`w-10 h-10 rounded-full bg-purple-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-purple-500 ${activeThemeColor === 'purple' ? 'ring-2 ring-offset-2 ring-purple-500' : ''}`}
+                          onClick={() => setActiveThemeColor('purple')}
+                        ></div>
                         <span className="text-sm">Purple</span>
                       </div>
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="w-10 h-10 rounded-full bg-green-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-green-500"></div>
+                        <div 
+                          className={`w-10 h-10 rounded-full bg-green-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-green-500 ${activeThemeColor === 'green' ? 'ring-2 ring-offset-2 ring-green-500' : ''}`}
+                          onClick={() => setActiveThemeColor('green')}
+                        ></div>
                         <span className="text-sm">Green</span>
                       </div>
                       <div className="flex flex-col items-center space-y-2">
-                        <div className="w-10 h-10 rounded-full bg-orange-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-orange-500"></div>
+                        <div 
+                          className={`w-10 h-10 rounded-full bg-orange-500 cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-orange-500 ${activeThemeColor === 'orange' ? 'ring-2 ring-offset-2 ring-orange-500' : ''}`}
+                          onClick={() => setActiveThemeColor('orange')}
+                        ></div>
                         <span className="text-sm">Orange</span>
                       </div>
                     </div>
@@ -261,18 +557,42 @@ const SettingsPage = () => {
                     <div className="grid gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="current-password">Current Password</Label>
-                        <Input id="current-password" type="password" />
+                        <Input 
+                          id="current-password" 
+                          name="currentPassword"
+                          type="password" 
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordChange}
+                          className={passwordErrors.currentPassword ? "border-red-500" : ""}
+                        />
+                        {passwordErrors.currentPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.currentPassword}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="new-password">New Password</Label>
-                        <Input id="new-password" type="password" />
+                        <Input 
+                          id="new-password" 
+                          name="newPassword"
+                          type="password" 
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChange}
+                          className={passwordErrors.newPassword ? "border-red-500" : ""}
+                        />
+                        {passwordErrors.newPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.newPassword}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="confirm-password">Confirm New Password</Label>
-                        <Input id="confirm-password" type="password" />
+                        <Input 
+                          id="confirm-password" 
+                          name="confirmPassword"
+                          type="password" 
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChange}
+                          className={passwordErrors.confirmPassword ? "border-red-500" : ""}
+                        />
+                        {passwordErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{passwordErrors.confirmPassword}</p>}
                       </div>
                     </div>
-                    <Button>Update Password</Button>
+                    <Button onClick={handleUpdatePassword}>Update Password</Button>
                   </div>
                   
                   <Separator />
@@ -308,7 +628,12 @@ const SettingsPage = () => {
                           <p className="text-sm text-muted-foreground">Sync your tasks with Google Calendar</p>
                         </div>
                       </div>
-                      <Button variant="outline">Connect</Button>
+                      <Button 
+                        variant={integrations.googleCalendar ? "default" : "outline"}
+                        onClick={() => handleConnectIntegration('googleCalendar')}
+                      >
+                        {integrations.googleCalendar ? 'Disconnect' : 'Connect'}
+                      </Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -321,7 +646,12 @@ const SettingsPage = () => {
                           <p className="text-sm text-muted-foreground">Get notifications in your Slack channels</p>
                         </div>
                       </div>
-                      <Button variant="outline">Connect</Button>
+                      <Button 
+                        variant={integrations.slack ? "default" : "outline"}
+                        onClick={() => handleConnectIntegration('slack')}
+                      >
+                        {integrations.slack ? 'Disconnect' : 'Connect'}
+                      </Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -334,7 +664,12 @@ const SettingsPage = () => {
                           <p className="text-sm text-muted-foreground">Import boards and tasks from Trello</p>
                         </div>
                       </div>
-                      <Button variant="outline">Connect</Button>
+                      <Button 
+                        variant={integrations.trello ? "default" : "outline"}
+                        onClick={() => handleConnectIntegration('trello')}
+                      >
+                        {integrations.trello ? 'Disconnect' : 'Connect'}
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
