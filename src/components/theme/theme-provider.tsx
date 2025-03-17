@@ -11,8 +11,6 @@ type ThemeContextType = {
   setTheme: (theme: ThemeType) => void;
   themeColor: string;
   setThemeColor: (color: string) => void;
-  applySidebarTheme: boolean;
-  toggleSidebarTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -22,28 +20,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [themeColor, setThemeColorState] = React.useState<string>(
     localStorage.getItem('themeColor') || 'blue'
   );
-  const [applySidebarTheme, setApplySidebarTheme] = React.useState<boolean>(
-    localStorage.getItem('applySidebarTheme') === 'true'
-  );
-
-  const toggleSidebarTheme = () => {
-    const newValue = !applySidebarTheme;
-    setApplySidebarTheme(newValue);
-    localStorage.setItem('applySidebarTheme', newValue.toString());
-    if (newValue) {
-      applySidebarColor(themeColor);
-    } else {
-      resetSidebarColor();
-    }
-  };
 
   const setThemeColor = (color: string) => {
     setThemeColorState(color);
     localStorage.setItem('themeColor', color);
     applyThemeColor(color);
-    if (applySidebarTheme) {
-      applySidebarColor(color);
-    }
   };
 
   // Apply theme class to document element
@@ -69,14 +50,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     if (savedThemeColor) {
       setThemeColorState(savedThemeColor);
       applyThemeColor(savedThemeColor);
-      
-      // Check sidebar theme preference
-      const savedSidebarTheme = localStorage.getItem('applySidebarTheme');
-      setApplySidebarTheme(savedSidebarTheme === 'true');
-      
-      if (savedSidebarTheme === 'true') {
-        applySidebarColor(savedThemeColor);
-      }
     } else {
       applyThemeColor('blue');
     }
@@ -119,35 +92,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   };
 
-  // Function to apply sidebar theming
-  const applySidebarColor = (color: string) => {
-    const root = window.document.documentElement;
-    const colorValues: Record<string, string> = {
-      blue: '#3b82f6',
-      purple: '#8b5cf6',
-      green: '#10b981',
-      orange: '#f97316'
-    };
-    
-    // Apply color to the sidebar
-    root.style.setProperty('--sidebar-primary', colorValues[color] || '#3b82f6');
-  };
-
-  // Function to reset sidebar color
-  const resetSidebarColor = () => {
-    const root = window.document.documentElement;
-    root.style.removeProperty('--sidebar-primary');
-  };
-
   return (
-    <ThemeContext.Provider value={{ 
-      theme, 
-      setTheme, 
-      themeColor, 
-      setThemeColor,
-      applySidebarTheme,
-      toggleSidebarTheme
-    }}>
+    <ThemeContext.Provider value={{ theme, setTheme, themeColor, setThemeColor }}>
       {children}
     </ThemeContext.Provider>
   );
