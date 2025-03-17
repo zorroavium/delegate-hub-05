@@ -13,15 +13,15 @@ const tasksMock = [
     dueDate: '2023-06-15',
     progress: 60,
     assignee: {
-      id: '101',
+      id: '1', // Updated to match employee store ID
       name: 'Sarah Johnson',
       avatar: 'SJ',
-      color: 'bg-blue-500'
+      color: 'bg-purple-500' // Updated to match employee color
     },
     activities: [
       {
         id: '101',
-        userId: '101',
+        userId: '1', // Updated to match employee store ID
         userName: 'Sarah Johnson',
         userAvatar: 'SJ',
         action: 'created this task',
@@ -38,17 +38,17 @@ const tasksMock = [
     dueDate: '2023-06-30',
     progress: 20,
     assignee: {
-      id: '102',
-      name: 'Mike Anderson',
-      avatar: 'MA',
+      id: '4', // Updated to match employee store ID (David Wilson)
+      name: 'David Wilson',
+      avatar: 'DW',
       color: 'bg-green-500'
     },
     activities: [
       {
         id: '201',
-        userId: '102',
-        userName: 'Mike Anderson',
-        userAvatar: 'MA',
+        userId: '4', // Updated to match employee store ID
+        userName: 'David Wilson',
+        userAvatar: 'DW',
         action: 'created this task',
         timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       }
@@ -63,17 +63,17 @@ const tasksMock = [
     dueDate: '2023-06-10',
     progress: 0,
     assignee: {
-      id: '103',
-      name: 'Emily Chen',
-      avatar: 'EC',
-      color: 'bg-purple-500'
+      id: '7', // Updated to match employee store ID (Sophia Martinez)
+      name: 'Sophia Martinez',
+      avatar: 'SM',
+      color: 'bg-pink-500'
     },
     activities: [
       {
         id: '301',
-        userId: '103',
-        userName: 'Emily Chen',
-        userAvatar: 'EC',
+        userId: '7', // Updated to match employee store ID
+        userName: 'Sophia Martinez',
+        userAvatar: 'SM',
         action: 'created this task',
         timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       }
@@ -88,25 +88,25 @@ const tasksMock = [
     dueDate: '2023-06-05',
     progress: 100,
     assignee: {
-      id: '104',
-      name: 'Alex Thompson',
-      avatar: 'AT',
-      color: 'bg-yellow-500'
+      id: '6', // Updated to match employee store ID (Robert Taylor)
+      name: 'Robert Taylor',
+      avatar: 'RT',
+      color: 'bg-red-500'
     },
     activities: [
       {
         id: '401',
-        userId: '104',
-        userName: 'Alex Thompson',
-        userAvatar: 'AT',
+        userId: '6', // Updated to match employee store ID
+        userName: 'Robert Taylor',
+        userAvatar: 'RT',
         action: 'created this task',
         timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       },
       {
         id: '402',
-        userId: '104',
-        userName: 'Alex Thompson',
-        userAvatar: 'AT',
+        userId: '6', // Updated to match employee store ID
+        userName: 'Robert Taylor',
+        userAvatar: 'RT',
         action: 'marked as completed',
         timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       }
@@ -121,15 +121,15 @@ const tasksMock = [
     dueDate: '2023-06-20',
     progress: 40,
     assignee: {
-      id: '101',
+      id: '1', // Updated to match employee store ID
       name: 'Sarah Johnson',
       avatar: 'SJ',
-      color: 'bg-blue-500'
+      color: 'bg-purple-500' // Updated to match employee color
     },
     activities: [
       {
         id: '501',
-        userId: '101',
+        userId: '1', // Updated to match employee store ID
         userName: 'Sarah Johnson',
         userAvatar: 'SJ',
         action: 'created this task',
@@ -137,9 +137,9 @@ const tasksMock = [
       },
       {
         id: '502',
-        userId: '102',
-        userName: 'Mike Anderson',
-        userAvatar: 'MA',
+        userId: '4', // Updated to match employee store ID (David Wilson)
+        userName: 'David Wilson',
+        userAvatar: 'DW',
         action: 'changed status from Pending to In Progress',
         timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       }
@@ -154,25 +154,25 @@ const tasksMock = [
     dueDate: '2023-06-01',
     progress: 100,
     assignee: {
-      id: '103',
-      name: 'Emily Chen',
-      avatar: 'EC',
-      color: 'bg-purple-500'
+      id: '2', // Updated to match employee store ID (Michael Chen)
+      name: 'Michael Chen',
+      avatar: 'MC',
+      color: 'bg-blue-500'
     },
     activities: [
       {
         id: '601',
-        userId: '103',
-        userName: 'Emily Chen',
-        userAvatar: 'EC',
+        userId: '2', // Updated to match employee store ID
+        userName: 'Michael Chen',
+        userAvatar: 'MC',
         action: 'created this task',
         timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       },
       {
         id: '602',
-        userId: '103',
-        userName: 'Emily Chen',
-        userAvatar: 'EC',
+        userId: '2', // Updated to match employee store ID
+        userName: 'Michael Chen',
+        userAvatar: 'MC',
         action: 'marked as completed',
         timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       }

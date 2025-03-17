@@ -54,13 +54,13 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
     <Link
       to={`/task/${task.id}`}
       className={cn(
-        'block bg-card hover:bg-accent/5 rounded-lg border border-l-4 shadow-sm transition-all duration-300 hover:shadow-md max-w-md mx-auto lg:mx-0',
+        'block bg-card hover:bg-accent/5 rounded-lg border border-l-4 shadow-sm transition-all duration-300 hover:shadow-md h-full w-full',
         getStatusClass(),
         className
       )}
     >
-      <Card className="border-0 shadow-none">
-        <CardContent className="p-4 space-y-3">
+      <Card className="border-0 shadow-none h-full">
+        <CardContent className="p-4 space-y-3 h-full flex flex-col">
           {/* Task title and priority */}
           <div className="flex items-start justify-between">
             <h3 className="font-medium text-balance line-clamp-2">{task.title}</h3>
@@ -105,17 +105,17 @@ export const EnhancedTaskCard: React.FC<EnhancedTaskCardProps> = ({ task, classN
                     indicatorClassName={task.status === 'completed' ? 'bg-status-completed' : undefined}
                   />
                 </div>
-                <Avatar className="h-8 w-8 border border-border flex items-center justify-center">
-                  <div className="flex items-center justify-center w-full h-full text-xs font-medium bg-primary text-primary-foreground">
-                    {task.assignee.name.split(' ').map(n => n[0]).join('')}
+                <Avatar className={`h-8 w-8 border border-border flex items-center justify-center ${task.assignee.color || 'bg-primary'}`}>
+                  <div className="flex items-center justify-center w-full h-full text-xs font-medium text-white">
+                    {task.assignee.avatar || task.assignee.name.split(' ').map(n => n[0]).join('')}
                   </div>
                 </Avatar>
               </div>
             )}
           </div>
 
-          {/* Footer with metadata */}
-          <div className="flex items-center justify-between pt-2 border-t border-border/30">
+          {/* Footer with metadata - push to bottom with flex-grow */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 mt-auto">
             <div className="flex items-center text-xs text-muted-foreground">
               <Calendar size={14} className="mr-1" />
               <span className={cn(

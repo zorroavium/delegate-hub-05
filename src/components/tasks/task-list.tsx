@@ -24,7 +24,9 @@ export const TaskList: React.FC<TaskListProps> = ({
   return (
     <Grid columns={{ default: 1, sm: 2, lg: 3 }} gap={6}>
       {tasks.map(task => (
-        <EnhancedTaskCard key={task.id} task={task} />
+        <div key={task.id} className="w-full h-full">
+          <EnhancedTaskCard task={task} className="h-full" />
+        </div>
       ))}
     </Grid>
   );
