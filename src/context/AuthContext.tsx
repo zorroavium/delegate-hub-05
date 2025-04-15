@@ -14,6 +14,56 @@ export interface User {
   role: UserRole;
 }
 
+// Define permissions for each role
+export interface PermissionMap {
+  [key: string]: boolean;
+}
+
+const defaultPermissions: Record<UserRole, PermissionMap> = {
+  admin: {
+    viewDashboard: true,
+    viewTasks: true,
+    createTask: true,
+    editTask: true,
+    deleteTask: true,
+    viewEmployees: true,
+    editEmployees: true,
+    viewReports: true,
+    viewSettings: true,
+    editSettings: true,
+    manageUsers: true,
+    accessAdminPanel: true,
+  },
+  employee: {
+    viewDashboard: true,
+    viewTasks: true,
+    createTask: true,
+    editTask: true,
+    deleteTask: false,
+    viewEmployees: true,
+    editEmployees: false,
+    viewReports: true,
+    viewSettings: false,
+    editSettings: false,
+    manageUsers: false,
+    accessAdminPanel: false,
+  },
+  client: {
+    viewDashboard: true,
+    viewTasks: true,
+    createTask: false,
+    editTask: false,
+    deleteTask: false,
+    viewEmployees: false,
+    editEmployees: false,
+    viewReports: false,
+    viewSettings: false,
+    editSettings: false,
+    manageUsers: false,
+    accessAdminPanel: false,
+  },
+};
+
 // Define authentication context interface
 interface AuthContextType {
   user: User | null;
@@ -22,6 +72,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
+  hasPermission: (permission: string) => boolean;
+  permissions: PermissionMap;
 }
 
 // Create the context
@@ -55,8 +107,18 @@ const USERS = [
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissions, setPermissions] = useState<PermissionMap>({});
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Update permissions whenever user changes
+  useEffect(() => {
+    if (user) {
+      setPermissions(defaultPermissions[user.role] || {});
+    } else {
+      setPermissions({});
+    }
+  }, [user]);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -85,6 +147,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { password: _, ...userWithoutPassword } = foundUser;
       setUser(userWithoutPassword);
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      
+      // Set permissions based on user role
+      setPermissions(defaultPermissions[userWithoutPassword.role] || {});
+      
       toast({
         title: 'Login successful',
         description: `Welcome back, ${userWithoutPassword.name}!`,
@@ -103,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = () => {
     setUser(null);
+    setPermissions({});
     localStorage.removeItem('user');
     navigate('/login');
     toast({
@@ -121,6 +188,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return user.role === roles;
   };
+  
+  // Check if user has a specific permission
+  const hasPermission = (permission: string) => {
+    return permissions[permission] === true;
+  };
 
   const value = {
     user,
@@ -129,6 +201,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isAuthenticated: !!user,
     isLoading,
     hasRole,
+    hasPermission,
+    permissions,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

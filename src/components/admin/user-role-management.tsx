@@ -154,10 +154,15 @@ export function UserRoleManagement() {
 
   const onSubmit = (data: UserFormValues) => {
     if (editingUser) {
-      // Update existing user
+      // Update existing user - ensure all required fields are present
       setUsers(prev =>
         prev.map(user =>
-          user.id === editingUser.id ? { ...user, ...data } : user
+          user.id === editingUser.id ? { 
+            ...user, 
+            name: data.name,
+            email: data.email,
+            role: data.role 
+          } : user
         )
       );
       toast({
@@ -165,10 +170,12 @@ export function UserRoleManagement() {
         description: `${data.name}'s information has been updated`,
       });
     } else {
-      // Create new user
+      // Create new user - ensure all required fields are present
       const newUser: User = {
         id: Date.now().toString(),
-        ...data,
+        name: data.name,
+        email: data.email,
+        role: data.role,
       };
       setUsers(prev => [...prev, newUser]);
       toast({
