@@ -59,25 +59,39 @@ export function AuditLog() {
 
   // Fetch audit logs
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchLogs = async () => {
+      if (!isMounted) return;
+      
       setIsLoading(true);
       try {
         const auditLogs = await getSecurityAuditLog();
-        setLogs(auditLogs);
-        setFilteredLogs(auditLogs);
+        if (isMounted) {
+          setLogs(auditLogs);
+          setFilteredLogs(auditLogs);
+        }
       } catch (error) {
-        console.error('Failed to fetch audit logs:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch audit logs.',
-          variant: 'destructive',
-        });
+        if (isMounted) {
+          console.error('Failed to fetch audit logs:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to fetch audit logs.',
+            variant: 'destructive',
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchLogs();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [getSecurityAuditLog, toast]);
 
   // Apply filters when actionFilter or searchTerm changes
