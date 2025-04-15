@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,14 +26,27 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/context/AuthContext';
 import { ForgotPasswordDialog } from '@/components/auth/forgot-password-dialog';
+import { MfaDialog } from '@/components/auth/mfa-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 
-// Login form schema
+// Password requirements for validation
+const passwordRequirements = {
+  minLength: 8,
+  requireLowercase: true,
+  requireUppercase: true,
+  requireNumber: true,
+  requireSpecialChar: true,
+};
+
+// Login form schema with password requirements
 const loginSchema = z.object({
   email: z
     .string()
     .min(1, { message: 'Email is required' })
     .email({ message: 'Must be a valid email' }),
   password: z.string().min(1, { message: 'Password is required' }),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -44,6 +57,13 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [mfaOpen, setMfaOpen] = useState(false);
+  const [tempEmail, setTempEmail] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginAttempts, setLoginAttempts] = useState(0);
+  const maxLoginAttempts = 5;
+  const [accountLocked, setAccountLocked] = useState(false);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -52,22 +72,88 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
+  // Handle account lockout
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (accountLocked && lockoutTimer > 0) {
+      timer = setInterval(() => {
+        setLockoutTimer((prev) => {
+          if (prev <= 1) {
+            setAccountLocked(false);
+            setLoginAttempts(0);
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [accountLocked, lockoutTimer]);
+
   // Form definition
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: false,
     },
   });
 
+  // Handle MFA verification
+  const handleMfaVerify = async (success: boolean) => {
+    if (success) {
+      setIsLoading(true);
+      try {
+        const success = await login(tempEmail, form.getValues().password, form.getValues().rememberMe || false);
+        if (success) {
+          navigate('/');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setLoginError('MFA verification failed');
+    }
+  };
+
   // Form submission handler
   const onSubmit = async (data: LoginFormValues) => {
+    if (accountLocked) return;
+    
+    setLoginError('');
     setIsLoading(true);
+    
     try {
-      const success = await login(data.email, data.password);
+      // Simulate MFA requirement for admin@example.com
+      if (data.email.toLowerCase() === 'admin@example.com') {
+        setTempEmail(data.email);
+        setMfaOpen(true);
+        return;
+      }
+      
+      const success = await login(data.email, data.password, data.rememberMe);
+      
       if (success) {
         navigate('/');
+      } else {
+        // Increment failed login attempts
+        const newAttempts = loginAttempts + 1;
+        setLoginAttempts(newAttempts);
+        
+        if (newAttempts >= maxLoginAttempts) {
+          // Lock account for 60 seconds after 5 failed attempts
+          setAccountLocked(true);
+          setLockoutTimer(60);
+          setLoginError(`Too many failed login attempts. Account locked for 60 seconds.`);
+        } else {
+          setLoginError(`Invalid credentials. ${maxLoginAttempts - newAttempts} attempts remaining before lockout.`);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -88,6 +174,22 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {loginError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>{loginError}</AlertDescription>
+              </Alert>
+            )}
+            
+            {accountLocked && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Account Locked</AlertTitle>
+                <AlertDescription>
+                  Your account is temporarily locked. Try again in {lockoutTimer} seconds.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
@@ -103,7 +205,7 @@ export default function Login() {
                             {...field}
                             placeholder="your@email.com"
                             className="pl-10"
-                            disabled={isLoading}
+                            disabled={isLoading || accountLocked}
                           />
                         </div>
                       </FormControl>
@@ -125,7 +227,7 @@ export default function Login() {
                             type={showPassword ? 'text' : 'password'}
                             placeholder="••••••••"
                             className="pl-10 pr-10"
-                            disabled={isLoading}
+                            disabled={isLoading || accountLocked}
                           />
                           <Button
                             type="button"
@@ -133,6 +235,7 @@ export default function Login() {
                             size="icon"
                             className="absolute right-0 top-0 h-10 w-10"
                             onClick={() => setShowPassword(!showPassword)}
+                            disabled={isLoading || accountLocked}
                           >
                             {showPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -149,10 +252,30 @@ export default function Login() {
                     </FormItem>
                   )}
                 />
+                
+                <FormField
+                  control={form.control}
+                  name="rememberMe"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isLoading || accountLocked}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Remember me for 30 days</FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={isLoading}
+                  disabled={isLoading || accountLocked}
                 >
                   {isLoading ? 'Signing in...' : 'Sign In'}
                 </Button>
@@ -164,12 +287,13 @@ export default function Login() {
               variant="link"
               className="w-full"
               onClick={() => setForgotPasswordOpen(true)}
+              disabled={accountLocked}
             >
               Forgot your password?
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               <p>Demo Credentials:</p>
-              <p className="font-medium">admin@example.com / admin123</p>
+              <p className="font-medium">admin@example.com / admin123 <ShieldCheck className="inline h-4 w-4 text-amber-500" title="Requires MFA" /></p>
               <p className="font-medium">employee@example.com / employee123</p>
               <p className="font-medium">client@example.com / client123</p>
             </div>
@@ -179,6 +303,12 @@ export default function Login() {
       <ForgotPasswordDialog
         open={forgotPasswordOpen}
         onOpenChange={setForgotPasswordOpen}
+      />
+      <MfaDialog
+        open={mfaOpen}
+        onOpenChange={setMfaOpen}
+        onVerify={handleMfaVerify}
+        email={tempEmail}
       />
     </div>
   );
