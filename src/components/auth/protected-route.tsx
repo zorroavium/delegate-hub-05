@@ -1,8 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/context/AuthContext';
-import { Shield, Clock, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProtectedRouteProps {
@@ -10,7 +10,6 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
   requireMFA?: boolean;
   minSecurityLevel?: number;
-  suppressSecurityNotice?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -18,39 +17,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   requireMFA = false,
   minSecurityLevel = 0,
-  suppressSecurityNotice = false,
 }) => {
-  const { isAuthenticated, isLoading, user, hasRole, securityLevel = 1, mfaEnabled = false } = useAuth();
+  const { isAuthenticated, isLoading, user, hasRole, mfaEnabled = false } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
-  const [showWarning, setShowWarning] = useState(false);
-  const [shouldShowSecurityToast, setShouldShowSecurityToast] = useState(false);
   const [shouldShowMFAToast, setShouldShowMFAToast] = useState(false);
   const [shouldShowPermissionToast, setShouldShowPermissionToast] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState<{to: string, replace: boolean, state?: any} | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      console.log(`Access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
-      
-      if (securityLevel < minSecurityLevel) {
-        setShowWarning(true);
-        setShouldShowSecurityToast(true);
-      }
-    }
-  }, [user, location.pathname, securityLevel, minSecurityLevel]);
-
-  useEffect(() => {
-    if (shouldShowSecurityToast) {
-      toast({
-        title: "Security Recommendation",
-        description: "For enhanced security, additional verification is recommended for this section.",
-        variant: "default",
-      });
-      setShouldShowSecurityToast(false);
-    }
-  }, [shouldShowSecurityToast, toast]);
-
+  // Handle MFA toast display
   useEffect(() => {
     if (shouldShowMFAToast) {
       toast({
@@ -62,6 +37,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [shouldShowMFAToast, toast]);
 
+  // Handle permissions toast display
   useEffect(() => {
     if (shouldShowPermissionToast) {
       toast({
@@ -73,8 +49,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [shouldShowPermissionToast, toast]);
 
+  // Main authentication and permission logic
   useEffect(() => {
     if (!isLoading) {
+      // Handle authentication
       if (!isAuthenticated) {
         setShouldRedirect({
           to: "/login",
@@ -84,6 +62,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
+      // Handle MFA requirement
       if (requireMFA && !mfaEnabled && user) {
         setShouldShowMFAToast(true);
         setShouldRedirect({
@@ -94,16 +73,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
-        setShouldShowSecurityToast(true);
-      }
-
+      // Handle role-based permissions
       if (allowedRoles && user) {
         const hasRequiredRole = allowedRoles.some(role => hasRole(role));
         
         if (!hasRequiredRole) {
           setShouldShowPermissionToast(true);
-          
           console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
           
           setShouldRedirect({
@@ -116,8 +91,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       
       setShouldRedirect(null);
     }
-  }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, securityLevel, minSecurityLevel, allowedRoles, hasRole, location]);
+  }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, allowedRoles, hasRole, location]);
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center">
@@ -127,33 +103,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Redirect if needed
   if (shouldRedirect) {
     return <Navigate to={shouldRedirect.to} state={shouldRedirect.state} replace={shouldRedirect.replace} />;
   }
 
-  const shouldDisplayWarning = !suppressSecurityNotice && showWarning && securityLevel < minSecurityLevel;
-
-  return (
-    <>
-      {shouldDisplayWarning && (
-        <div className="mb-4 rounded-md bg-amber-50 p-4 dark:bg-amber-900/20">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Security Notice</h3>
-              <div className="mt-2 text-sm text-amber-700 dark:text-amber-200">
-                <p>
-                  For enhanced security, additional verification is recommended for this section. 
-                  Visit your security settings to increase your security level.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {children}
-    </>
-  );
+  // Show the protected content
+  return <>{children}</>;
 };

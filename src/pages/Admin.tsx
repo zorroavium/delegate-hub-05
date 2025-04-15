@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { SidebarLayout } from '@/components/layout/sidebar';
@@ -29,11 +28,7 @@ export default function Admin() {
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
 
   return (
-    <ProtectedRoute 
-      allowedRoles={['admin']} 
-      minSecurityLevel={2} 
-      suppressSecurityNotice={true}  // Add this line to suppress the security notice
-    >
+    <ProtectedRoute allowedRoles={['admin']}>
       <SidebarLayout>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
