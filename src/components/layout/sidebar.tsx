@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -12,7 +11,9 @@ import {
   Menu,
   X,
   PanelLeft,
-  PanelRight
+  PanelRight,
+  Shield,
+  LogOut
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -23,11 +24,13 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from '@/components/theme/theme-provider';
+import { useAuth, UserRole } from '@/context/AuthContext';
 
 interface SidebarOption {
   path: string;
   label: string;
   icon: React.ReactNode;
+  roles?: UserRole[];
 }
 
 const sidebarOptions: SidebarOption[] = [
@@ -45,6 +48,7 @@ const sidebarOptions: SidebarOption[] = [
     path: '/employees',
     label: 'Employees',
     icon: <Users size={20} />,
+    roles: ['admin', 'employee'],
   },
   {
     path: '/calendar',
@@ -55,11 +59,19 @@ const sidebarOptions: SidebarOption[] = [
     path: '/reports',
     label: 'Reports',
     icon: <BarChart3 size={20} />,
+    roles: ['admin', 'employee'],
+  },
+  {
+    path: '/admin',
+    label: 'Admin',
+    icon: <Shield size={20} />,
+    roles: ['admin'],
   },
   {
     path: '/settings',
     label: 'Settings',
     icon: <Settings size={20} />,
+    roles: ['admin'],
   },
   {
     path: '/notifications',
@@ -72,6 +84,7 @@ const Sidebar = ({ className }: { className?: string }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { themeColor, sidebarColor } = useTheme();
+  const { user, logout, hasRole } = useAuth();
   
   // Generate sidebar background class based on theme color
   const getSidebarBgClass = () => {
@@ -90,6 +103,15 @@ const Sidebar = ({ className }: { className?: string }) => {
         return "bg-card/80";
     }
   };
+
+  // Filter sidebar options based on user role
+  const filteredOptions = sidebarOptions.filter(option => {
+    // If no roles specified, show to all
+    if (!option.roles) return true;
+    
+    // Otherwise, check if user has required role
+    return option.roles.some(role => hasRole(role));
+  });
   
   return (
     <div className={cn('h-screen flex flex-col border-r w-full', getSidebarBgClass(), className)}>
@@ -102,7 +124,7 @@ const Sidebar = ({ className }: { className?: string }) => {
       
       <ScrollArea className="flex-1 px-2 py-2">
         <nav className="grid gap-1">
-          {sidebarOptions.map((option) => (
+          {filteredOptions.map((option) => (
             <Button
               key={option.path}
               variant={location.pathname === option.path ? 'secondary' : 'ghost'}
@@ -124,15 +146,28 @@ const Sidebar = ({ className }: { className?: string }) => {
           <div className="flex items-center gap-2">
             <ThemeToggle />
           </div>
+          {user && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={logout}
+              className="text-muted-foreground hover:text-foreground"
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </Button>
+          )}
         </div>
         <Separator className="my-3" />
         <div className="flex items-center">
           <Avatar className="h-9 w-9">
-            <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-lg font-medium">A</div>
+            <div className="bg-primary text-primary-foreground flex items-center justify-center w-full h-full text-lg font-medium">
+              {user?.name?.charAt(0) || 'A'}
+            </div>
           </Avatar>
           <div className="ml-2">
-            <p className="text-sm font-medium">Admin User</p>
-            <p className="text-xs text-muted-foreground">admin@example.com</p>
+            <p className="text-sm font-medium">{user?.name || 'Admin User'}</p>
+            <p className="text-xs text-muted-foreground">{user?.email || 'admin@example.com'}</p>
           </div>
         </div>
       </div>
