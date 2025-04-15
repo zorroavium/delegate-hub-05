@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +10,7 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
   requireMFA?: boolean;
   minSecurityLevel?: number;
+  suppressSecurityNotice?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -18,6 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   requireMFA = false,
   minSecurityLevel = 0,
+  suppressSecurityNotice = false,
 }) => {
   const { isAuthenticated, isLoading, user, hasRole, securityLevel = 1, mfaEnabled = false } = useAuth();
   const location = useLocation();
@@ -28,12 +29,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [shouldShowPermissionToast, setShouldShowPermissionToast] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState<{to: string, replace: boolean, state?: any} | null>(null);
 
-  // Log access attempts for security audit
   useEffect(() => {
     if (user) {
       console.log(`Access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
       
-      // If security level is below recommended but they can still access
       if (securityLevel < minSecurityLevel) {
         setShowWarning(true);
         setShouldShowSecurityToast(true);
@@ -41,7 +40,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [user, location.pathname, securityLevel, minSecurityLevel]);
 
-  // Handle toast notifications in separate effects to avoid re-renders during render
   useEffect(() => {
     if (shouldShowSecurityToast) {
       toast({
@@ -75,11 +73,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [shouldShowPermissionToast, toast]);
 
-  // Check various conditions and set redirect info in a single useEffect
   useEffect(() => {
-    // Only run checks when auth is confirmed (not loading)
     if (!isLoading) {
-      // Check authentication
       if (!isAuthenticated) {
         setShouldRedirect({
           to: "/login",
@@ -89,7 +84,6 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      // Check MFA requirement - only show toast and redirect if MFA is not set up
       if (requireMFA && !mfaEnabled && user) {
         setShouldShowMFAToast(true);
         setShouldRedirect({
@@ -100,20 +94,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      // Check security level - only show toast but DO NOT redirect
       if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
         setShouldShowSecurityToast(true);
-        // We'll show the warning but NOT redirect
       }
 
-      // Check role permissions
       if (allowedRoles && user) {
         const hasRequiredRole = allowedRoles.some(role => hasRole(role));
         
         if (!hasRequiredRole) {
           setShouldShowPermissionToast(true);
           
-          // Log unauthorized access attempt to security audit
           console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
           
           setShouldRedirect({
@@ -124,12 +114,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         }
       }
       
-      // Clear any previous redirect if all checks pass
       setShouldRedirect(null);
     }
   }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, securityLevel, minSecurityLevel, allowedRoles, hasRole, location]);
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center">
@@ -139,15 +127,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Handle redirects
   if (shouldRedirect) {
     return <Navigate to={shouldRedirect.to} state={shouldRedirect.state} replace={shouldRedirect.replace} />;
   }
 
-  // User passes all checks
+  const shouldDisplayWarning = !suppressSecurityNotice && showWarning && securityLevel < minSecurityLevel;
+
   return (
     <>
-      {showWarning && (
+      {shouldDisplayWarning && (
         <div className="mb-4 rounded-md bg-amber-50 p-4 dark:bg-amber-900/20">
           <div className="flex">
             <div className="flex-shrink-0">
