@@ -23,6 +23,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const { toast } = useToast();
   const [showWarning, setShowWarning] = useState(false);
+  const [shouldShowSecurityToast, setShouldShowSecurityToast] = useState(false);
+  const [shouldShowMFAToast, setShouldShowMFAToast] = useState(false);
+  const [shouldShowPermissionToast, setShouldShowPermissionToast] = useState(false);
 
   // Log access attempts for security audit
   useEffect(() => {
@@ -32,14 +35,44 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       // If security level is below recommended but they can still access
       if (securityLevel < minSecurityLevel) {
         setShowWarning(true);
-        toast({
-          title: "Security Recommendation",
-          description: "For enhanced security, additional verification is recommended for this section.",
-          variant: "default",
-        });
+        setShouldShowSecurityToast(true);
       }
     }
-  }, [user, location.pathname, securityLevel, minSecurityLevel, toast]);
+  }, [user, location.pathname, securityLevel, minSecurityLevel]);
+
+  // Handle toast notifications in a separate effect to avoid re-renders during render
+  useEffect(() => {
+    if (shouldShowSecurityToast) {
+      toast({
+        title: "Security Recommendation",
+        description: "For enhanced security, additional verification is recommended for this section.",
+        variant: "default",
+      });
+      setShouldShowSecurityToast(false);
+    }
+  }, [shouldShowSecurityToast, toast]);
+
+  useEffect(() => {
+    if (shouldShowMFAToast) {
+      toast({
+        title: "MFA Required",
+        description: "This section requires multi-factor authentication. Please set up MFA in your security settings.",
+        variant: "destructive",
+      });
+      setShouldShowMFAToast(false);
+    }
+  }, [shouldShowMFAToast, toast]);
+
+  useEffect(() => {
+    if (shouldShowPermissionToast) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have the required permissions to access this area.",
+        variant: "destructive",
+      });
+      setShouldShowPermissionToast(false);
+    }
+  }, [shouldShowPermissionToast, toast]);
 
   // Show loading state
   if (isLoading) {
@@ -59,11 +92,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check MFA requirement
   if (requireMFA && !mfaEnabled && user) {
-    toast({
-      title: "MFA Required",
-      description: "This section requires multi-factor authentication. Please set up MFA in your security settings.",
-      variant: "destructive",
-    });
+    setShouldShowMFAToast(true);
     
     // Redirect to MFA setup page
     return <Navigate to="/settings?tab=security&setup=mfa" state={{ from: location }} replace />;
@@ -71,11 +100,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check security level
   if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
-    toast({
-      title: "Access Restricted",
-      description: "This area requires a higher security clearance.",
-      variant: "destructive",
-    });
+    setShouldShowSecurityToast(true);
     
     return <Navigate to="/" replace />;
   }
@@ -85,11 +110,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const hasRequiredRole = allowedRoles.some(role => hasRole(role));
     
     if (!hasRequiredRole) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have the required permissions to access this area.",
-        variant: "destructive",
-      });
+      setShouldShowPermissionToast(true);
       
       // Log unauthorized access attempt to security audit
       console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
