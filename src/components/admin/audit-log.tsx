@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Shield, Filter, Download, Search, Info, AlertTriangle, X } from 'lucide-react';
 import { format } from 'date-fns';
@@ -53,26 +53,34 @@ export function AuditLog() {
   const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const isMounted = useRef<boolean>(true);
   const logsPerPage = 10;
+
+  // Initialize on component mount
+  useEffect(() => {
+    isMounted.current = true;
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Fetch audit logs
   useEffect(() => {
-    let isMounted = true;
-    
     const fetchLogs = async () => {
-      if (!isMounted) return;
+      if (!isMounted.current) return;
       
       setIsLoading(true);
       try {
         const auditLogs = await getSecurityAuditLog();
-        if (isMounted) {
+        if (isMounted.current) {
           setLogs(auditLogs);
           setFilteredLogs(auditLogs);
         }
       } catch (error) {
-        if (isMounted) {
+        if (isMounted.current) {
           console.error('Failed to fetch audit logs:', error);
           toast({
             title: 'Error',
@@ -81,17 +89,13 @@ export function AuditLog() {
           });
         }
       } finally {
-        if (isMounted) {
+        if (isMounted.current) {
           setIsLoading(false);
         }
       }
     };
 
     fetchLogs();
-    
-    return () => {
-      isMounted = false;
-    };
   }, [getSecurityAuditLog, toast]);
 
   // Apply filters when actionFilter or searchTerm changes

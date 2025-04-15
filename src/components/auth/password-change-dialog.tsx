@@ -1,85 +1,51 @@
 
 import React, { useState } from 'react';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, KeyRound, ShieldAlert } from 'lucide-react';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-
-// Password strength calculation
-const calculatePasswordStrength = (password: string): number => {
-  let strength = 0;
-  
-  if (password.length >= 8) strength += 20;
-  if (password.length >= 12) strength += 10;
-  if (/[A-Z]/.test(password)) strength += 20;
-  if (/[a-z]/.test(password)) strength += 20;
-  if (/[0-9]/.test(password)) strength += 20;
-  if (/[^A-Za-z0-9]/.test(password)) strength += 20;
-  
-  return Math.min(100, strength);
-};
-
-// Get color based on password strength
-const getStrengthColor = (strength: number): string => {
-  if (strength < 40) return 'bg-destructive';
-  if (strength < 70) return 'bg-amber-500';
-  return 'bg-green-500';
-};
-
-// Get message based on password strength
-const getStrengthMessage = (strength: number): string => {
-  if (strength < 40) return 'Weak';
-  if (strength < 70) return 'Moderate';
-  return 'Strong';
-};
-
-// Password change schema with validation
-const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1, { message: 'Current password is required' }),
-  newPassword: z
-    .string()
-    .min(8, { message: 'Password must be at least 8 characters' })
-    .refine(val => /[A-Z]/.test(val), { message: 'Password must contain an uppercase letter' })
-    .refine(val => /[a-z]/.test(val), { message: 'Password must contain a lowercase letter' })
-    .refine(val => /[0-9]/.test(val), { message: 'Password must contain a number' })
-    .refine(val => /[^A-Za-z0-9]/.test(val), { message: 'Password must contain a special character' }),
-  confirmPassword: z.string().min(1, { message: 'Confirm password is required' }),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
-});
-
-type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>;
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { AlertCircle, Check, Eye, EyeOff, X } from 'lucide-react';
+import { PasswordStrengthMeter } from './password-strength-meter';
 
 interface PasswordChangeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function PasswordChangeDialog({ open, onOpenChange }: PasswordChangeDialogProps) {
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
+type PasswordFormValues = z.infer<typeof passwordSchema>;
+
+export const PasswordChangeDialog: React.FC<PasswordChangeDialogProps> = ({
+  open,
+  onOpenChange,
+}) => {
   const { toast } = useToast();
   const { changePassword } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,248 +53,243 @@ export function PasswordChangeDialog({ open, onOpenChange }: PasswordChangeDialo
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
-
-  const form = useForm<PasswordChangeFormValues>({
-    resolver: zodResolver(passwordChangeSchema),
+  
+  const form = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
     defaultValues: {
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
     },
   });
-
-  const watchPassword = form.watch('newPassword');
-
-  // Update password strength when password changes
+  
+  const { register, handleSubmit, formState: { errors }, watch, reset } = form;
+  
+  const watchNewPassword = watch('newPassword');
+  
+  // Calculate password strength whenever the password changes
   React.useEffect(() => {
-    setPasswordStrength(calculatePasswordStrength(watchPassword));
-  }, [watchPassword]);
-
-  const resetForm = () => {
-    form.reset();
-    setPasswordStrength(0);
-  };
-
-  const onClose = () => {
-    resetForm();
-    onOpenChange(false);
-  };
-
-  const onSubmit = async (data: PasswordChangeFormValues) => {
-    setIsSubmitting(true);
+    if (!watchNewPassword) {
+      setPasswordStrength(0);
+      return;
+    }
     
+    let strength = 0;
+    
+    // Length check
+    if (watchNewPassword.length >= 8) strength += 1;
+    if (watchNewPassword.length >= 12) strength += 1;
+    
+    // Complexity checks
+    if (/[A-Z]/.test(watchNewPassword)) strength += 1;
+    if (/[a-z]/.test(watchNewPassword)) strength += 1;
+    if (/[0-9]/.test(watchNewPassword)) strength += 1;
+    if (/[^A-Za-z0-9]/.test(watchNewPassword)) strength += 1;
+    
+    // Normalize to a scale of 0-100
+    setPasswordStrength(Math.min(100, Math.round((strength / 6) * 100)));
+  }, [watchNewPassword]);
+  
+  const onSubmit = async (data: PasswordFormValues) => {
+    setIsSubmitting(true);
     try {
-      const success = await changePassword(data.currentPassword, data.newPassword);
+      await changePassword(data.currentPassword, data.newPassword);
       
-      if (success) {
-        toast({
-          title: 'Password changed',
-          description: 'Your password has been updated successfully.',
-        });
-        onClose();
-      } else {
-        toast({
-          title: 'Password change failed',
-          description: 'Your current password is incorrect or the new password does not meet requirements.',
-          variant: 'destructive',
-        });
-      }
+      reset();
+      onOpenChange(false);
+      
+      toast({
+        title: 'Password changed',
+        description: 'Your password has been changed successfully.',
+      });
     } catch (error) {
+      console.error('Password change error:', error);
+      
       toast({
         title: 'Password change failed',
-        description: 'An unexpected error occurred. Please try again.',
+        description: 'Please check your current password and try again.',
         variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
+  const handleClose = () => {
+    reset();
+    onOpenChange(false);
+  };
+  
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" />
-            Change Password
-          </DialogTitle>
+          <DialogTitle>Change Password</DialogTitle>
           <DialogDescription>
-            Update your password. Choose a strong password that you don't use elsewhere.
+            Create a new password that is secure and easy to remember.
           </DialogDescription>
         </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="currentPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Current Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input 
-                        {...field} 
-                        type={showCurrentPassword ? 'text' : 'password'} 
-                        className="pr-10" 
-                        disabled={isSubmitting}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-10 w-10"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        disabled={isSubmitting}
-                      >
-                        {showCurrentPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                        <span className="sr-only">
-                          {showCurrentPassword ? 'Hide password' : 'Show password'}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="newPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input 
-                        {...field} 
-                        type={showNewPassword ? 'text' : 'password'} 
-                        className="pr-10" 
-                        disabled={isSubmitting}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-10 w-10"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        disabled={isSubmitting}
-                      >
-                        {showNewPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                        <span className="sr-only">
-                          {showNewPassword ? 'Hide password' : 'Show password'}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                  
-                  {watchPassword && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span>Password strength:</span>
-                        <span className={passwordStrength >= 70 ? 'text-green-500' : passwordStrength >= 40 ? 'text-amber-500' : 'text-destructive'}>
-                          {getStrengthMessage(passwordStrength)}
-                        </span>
-                      </div>
-                      <Progress value={passwordStrength} className={`h-1 ${getStrengthColor(passwordStrength)}`} />
-                      
-                      <Alert variant="outline" className="mt-3 py-2">
-                        <ShieldAlert className="h-4 w-4" />
-                        <AlertTitle className="text-xs font-medium">Password Requirements</AlertTitle>
-                        <AlertDescription className="text-xs">
-                          <ul className="list-inside list-disc space-y-1 mt-1">
-                            <li className={watchPassword.length >= 8 ? 'text-green-500' : ''}>
-                              At least 8 characters
-                            </li>
-                            <li className={/[A-Z]/.test(watchPassword) ? 'text-green-500' : ''}>
-                              One uppercase letter
-                            </li>
-                            <li className={/[a-z]/.test(watchPassword) ? 'text-green-500' : ''}>
-                              One lowercase letter
-                            </li>
-                            <li className={/[0-9]/.test(watchPassword) ? 'text-green-500' : ''}>
-                              One number
-                            </li>
-                            <li className={/[^A-Za-z0-9]/.test(watchPassword) ? 'text-green-500' : ''}>
-                              One special character
-                            </li>
-                          </ul>
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-                  )}
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input 
-                        {...field} 
-                        type={showConfirmPassword ? 'text' : 'password'} 
-                        className="pr-10" 
-                        disabled={isSubmitting}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-10 w-10"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        disabled={isSubmitting}
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                        <span className="sr-only">
-                          {showConfirmPassword ? 'Hide password' : 'Show password'}
-                        </span>
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
+        
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="currentPassword">
+              Current Password
+            </Label>
+            <div className="relative">
+              <Input
+                id="currentPassword"
+                type={showCurrentPassword ? 'text' : 'password'}
+                placeholder="Enter your current password"
+                {...register('currentPassword')}
+              />
               <Button
                 type="button"
-                variant="secondary"
-                onClick={onClose}
-                disabled={isSubmitting}
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
               >
-                Cancel
+                {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </Button>
-              <Button 
-                type="submit" 
-                variant="default"
-                disabled={isSubmitting}
+            </div>
+            {errors.currentPassword && (
+              <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                <AlertCircle size={14} />
+                {errors.currentPassword.message}
+              </p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">
+              New Password
+            </Label>
+            <div className="relative">
+              <Input
+                id="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                placeholder="Create a new password"
+                {...register('newPassword')}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
+                onClick={() => setShowNewPassword(!showNewPassword)}
               >
-                {isSubmitting ? 'Changing Password...' : 'Change Password'}
+                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            </div>
+            {errors.newPassword && (
+              <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                <AlertCircle size={14} />
+                {errors.newPassword.message}
+              </p>
+            )}
+            
+            {watchNewPassword && (
+              <div className="mt-2 space-y-2">
+                <PasswordStrengthMeter strength={passwordStrength} />
+                
+                <ul className="space-y-1 text-xs">
+                  <PasswordRequirement 
+                    met={watchNewPassword.length >= 8}
+                    text="At least 8 characters"
+                  />
+                  <PasswordRequirement 
+                    met={/[A-Z]/.test(watchNewPassword)}
+                    text="At least one uppercase letter"
+                  />
+                  <PasswordRequirement 
+                    met={/[a-z]/.test(watchNewPassword)}
+                    text="At least one lowercase letter"
+                  />
+                  <PasswordRequirement 
+                    met={/[0-9]/.test(watchNewPassword)}
+                    text="At least one number"
+                  />
+                  <PasswordRequirement 
+                    met={/[^A-Za-z0-9]/.test(watchNewPassword)}
+                    text="At least one special character"
+                  />
+                </ul>
+              </div>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">
+              Confirm Password
+            </Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                placeholder="Confirm your new password"
+                {...register('confirmPassword')}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 text-muted-foreground"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </Button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                <AlertCircle size={14} />
+                {errors.confirmPassword.message}
+              </p>
+            )}
+          </div>
+          
+          <DialogFooter className="pt-4">
+            <Button 
+              type="button"
+              variant="secondary"
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-current"></span>
+                  Changing...
+                </>
+              ) : (
+                'Change Password'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
+};
+
+interface PasswordRequirementProps {
+  met: boolean;
+  text: string;
 }
+
+const PasswordRequirement: React.FC<PasswordRequirementProps> = ({ met, text }) => {
+  return (
+    <li className={`flex items-center gap-1.5 ${met ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+      {met ? (
+        <Check size={14} className="text-green-600 dark:text-green-400" />
+      ) : (
+        <X size={14} />
+      )}
+      {text}
+    </li>
+  );
+};
