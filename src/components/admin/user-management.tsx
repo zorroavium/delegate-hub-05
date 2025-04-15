@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
@@ -260,11 +261,13 @@ export function UserManagement() {
     try {
       const newUser = await mockApi.createUser({
         ...data,
+        name: data.name, // Ensure name is explicitly provided
+        email: data.email, // Ensure email is explicitly provided
+        role: data.role, // Ensure role is explicitly provided
         lastLogin: '',
         passwordLastChanged: new Date().toISOString(),
         failedLoginAttempts: 0,
         isLocked: false,
-        role: data.role,
       });
       
       setUsers(prev => [...prev, newUser]);
