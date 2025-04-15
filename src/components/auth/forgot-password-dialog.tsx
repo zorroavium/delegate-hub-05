@@ -81,7 +81,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
         setSubmitState('success');
         toast({
           title: 'Reset email sent',
-          description: `If ${data.email} exists in our system, you'll receive password reset instructions shortly.`,
+          description: `If ${data.email} exists in our system, you will receive password reset instructions shortly.`,
         });
       } else {
         // For security reasons, we don't want to tell users if an email exists or not
@@ -89,7 +89,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
         setSubmitState('success');
         toast({
           title: 'Reset email sent',
-          description: "If this email exists in our system, you'll receive password reset instructions shortly.",
+          description: "If this email exists in our system, you will receive password reset instructions shortly.",
           variant: 'default',
         });
       }

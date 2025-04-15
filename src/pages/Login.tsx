@@ -293,7 +293,7 @@ export default function Login() {
             </Button>
             <div className="text-center text-sm text-muted-foreground">
               <p>Demo Credentials:</p>
-              <p className="font-medium">admin@example.com / admin123 <ShieldCheck className="inline h-4 w-4 text-amber-500" title="Requires MFA" /></p>
+              <p className="font-medium">admin@example.com / admin123 <ShieldCheck className="inline h-4 w-4 text-amber-500" aria-label="Requires MFA" /></p>
               <p className="font-medium">employee@example.com / employee123</p>
               <p className="font-medium">client@example.com / client123</p>
             </div>

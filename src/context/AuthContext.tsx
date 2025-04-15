@@ -156,7 +156,7 @@ const USERS: User[] = [
     name: 'Admin User',
     role: 'admin' as UserRole,
     lastLogin: new Date().toISOString(),
-    passwordLastChanged: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+    passwordLastChanged: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     requiresPasswordChange: false,
     mfaEnabled: true,
     failedLoginAttempts: 0,
@@ -168,7 +168,7 @@ const USERS: User[] = [
     name: 'Employee User',
     role: 'employee' as UserRole,
     lastLogin: new Date().toISOString(),
-    passwordLastChanged: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days ago
+    passwordLastChanged: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
     requiresPasswordChange: false,
     mfaEnabled: false,
     failedLoginAttempts: 0,
@@ -180,7 +180,7 @@ const USERS: User[] = [
     name: 'Client User',
     role: 'client' as UserRole,
     lastLogin: new Date().toISOString(),
-    passwordLastChanged: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
+    passwordLastChanged: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
     requiresPasswordChange: false,
     mfaEnabled: false,
     failedLoginAttempts: 0,
@@ -218,13 +218,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       action,
       details,
       userId: userId || user?.id || 'anonymous',
-      ip: '127.0.0.1', // In a real app, this would be the actual IP
+      ip: '127.0.0.1',
       userAgent: navigator.userAgent,
     };
     
     AUDIT_LOG.unshift(logEntry);
     
-    // Keep audit log to a reasonable size in this demo
     if (AUDIT_LOG.length > 1000) {
       AUDIT_LOG.pop();
     }
@@ -274,7 +273,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         window.addEventListener(event, handleUserActivity);
       });
       
-      // Initial timeout
       resetSessionTimeout();
       
       return () => {
@@ -296,7 +294,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsedUser = JSON.parse(storedUser);
         
-        // Check if the stored user session is expired (for remember me)
         const expiryStr = localStorage.getItem('session_expiry');
         if (expiryStr) {
           const expiry = new Date(expiryStr);
@@ -304,7 +301,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(parsedUser);
             addAuditLog('session_restored', { method: 'local_storage' }, parsedUser.id);
           } else {
-            // Session expired
             localStorage.removeItem('user');
             localStorage.removeItem('session_expiry');
             addAuditLog('session_expired', { method: 'local_storage' });
@@ -325,7 +321,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Login function with enhanced security
   const login = async (email: string, password: string, rememberMe = false): Promise<boolean> => {
-    // In a real app, this would make an API request
     const foundUserIndex = USERS.findIndex(
       u => u.email.toLowerCase() === email.toLowerCase()
     );
@@ -337,15 +332,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const foundUser = USERS[foundUserIndex];
     
-    // Check if account is locked
     if (foundUser.isLocked) {
       const lockUntil = foundUser.lockUntil ? new Date(foundUser.lockUntil) : null;
       if (lockUntil && lockUntil > new Date()) {
-        // Still locked
         addAuditLog('login_failed', { email, reason: 'account_locked', userId: foundUser.id });
         return false;
       } else {
-        // Lock expired, reset lock and attempts
         USERS[foundUserIndex] = {
           ...foundUser,
           isLocked: false,
@@ -355,9 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
-    // Check password
     if (PASSWORDS[email.toLowerCase()] !== password) {
-      // Increment failed attempts and potentially lock account
       const failedAttempts = (foundUser.failedLoginAttempts || 0) + 1;
       
       USERS[foundUserIndex] = {
@@ -394,25 +384,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    // For admin users, MFA should be verified separately (already done in the login flow)
-    // We'll assume it's verified at this point and proceed with login
-
-    // Login successful - update user data
-    const { password: _, ...userWithoutPassword } = {
+    const updatedUser = {
       ...foundUser,
       lastLogin: new Date().toISOString(),
-      failedLoginAttempts: 0, // Reset failed attempts on successful login
+      failedLoginAttempts: 0,
       isLocked: false,
       lockUntil: undefined,
     };
     
-    // Update the user in our "database"
-    USERS[foundUserIndex] = userWithoutPassword;
+    USERS[foundUserIndex] = updatedUser;
     
-    setUser(userWithoutPassword);
+    setUser(updatedUser);
     
-    // Store user in local storage with expiry for "remember me"
-    localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+    localStorage.setItem('user', JSON.stringify(updatedUser));
     
     if (rememberMe) {
       const expiry = new Date();
@@ -420,20 +404,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('session_expiry', expiry.toISOString());
     }
     
-    // Set permissions based on user role
-    setPermissions(defaultPermissions[userWithoutPassword.role] || {});
+    setPermissions(defaultPermissions[updatedUser.role] || {});
     
-    addAuditLog('login_success', { email, rememberMe }, userWithoutPassword.id);
+    addAuditLog('login_success', { email, rememberMe }, updatedUser.id);
     
     toast({
       title: 'Login successful',
-      description: `Welcome back, ${userWithoutPassword.name}!`,
+      description: `Welcome back, ${updatedUser.name}!`,
     });
     
     return true;
   };
 
-  // Logout function
   const logout = () => {
     if (user) {
       addAuditLog('logout', { method: 'user_initiated' }, user.id);
@@ -456,7 +438,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  // Check if user has specified role(s)
   const hasRole = (roles: UserRole | UserRole[]) => {
     if (!user) return false;
     
@@ -466,31 +447,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return user.role === roles;
   };
-  
-  // Check if user has a specific permission
+
   const hasPermission = (permission: string) => {
     return permissions[permission] === true;
   };
 
-  // Generate a password reset token
   const generatePasswordResetToken = async (email: string): Promise<string | null> => {
     const foundUser = USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
     
     if (!foundUser) {
-      // We don't want to reveal that the email doesn't exist
-      // But for demo purposes, we'll return null
       addAuditLog('password_reset_requested', { email, status: 'user_not_found' });
       return null;
     }
     
-    // Generate a token (in a real app, this would be a secure random token)
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     
-    // Set expiry to 24 hours from now
     const expires = new Date();
     expires.setHours(expires.getHours() + 24);
     
-    // Store the token
     PASSWORD_RESET_TOKENS[token] = { token, expires, email };
     
     addAuditLog('password_reset_token_generated', { email }, foundUser.id);
@@ -498,7 +472,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return token;
   };
 
-  // Validate a password reset token
   const validatePasswordResetToken = async (token: string): Promise<boolean> => {
     const tokenData = PASSWORD_RESET_TOKENS[token];
     
@@ -508,7 +481,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     if (new Date() > tokenData.expires) {
-      // Token expired
       delete PASSWORD_RESET_TOKENS[token];
       addAuditLog('password_reset_validation_failed', { token, reason: 'token_expired' });
       return false;
@@ -519,7 +491,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Change password (when logged in)
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!user) {
       addAuditLog('password_change_failed', { reason: 'not_authenticated' });
@@ -533,16 +504,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     
-    // Validate new password against policy
     if (!validatePassword(newPassword)) {
       addAuditLog('password_change_failed', { reason: 'password_policy_violation' }, user.id);
       return false;
     }
     
-    // Update password
     PASSWORDS[user.email.toLowerCase()] = newPassword;
     
-    // Update user's password change timestamp
     const userIndex = USERS.findIndex(u => u.id === user.id);
     if (userIndex !== -1) {
       USERS[userIndex] = {
@@ -551,7 +519,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         requiresPasswordChange: false,
       };
       
-      // Update current user state
       setUser({
         ...user,
         passwordLastChanged: new Date().toISOString(),
@@ -564,7 +531,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Reset password (when not logged in, using token)
   const resetPassword = async (token: string, newPassword: string): Promise<boolean> => {
     const tokenData = PASSWORD_RESET_TOKENS[token];
     
@@ -573,7 +539,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     
-    // Validate new password against policy
     if (!validatePassword(newPassword)) {
       addAuditLog('password_reset_failed', { token, reason: 'password_policy_violation' });
       return false;
@@ -581,10 +546,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const email = tokenData.email;
     
-    // Update password
     PASSWORDS[email.toLowerCase()] = newPassword;
     
-    // Update user's password change timestamp
     const userIndex = USERS.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
     if (userIndex !== -1) {
       USERS[userIndex] = {
@@ -596,21 +559,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addAuditLog('password_reset_successful', { token }, USERS[userIndex].id);
     }
     
-    // Remove used token
     delete PASSWORD_RESET_TOKENS[token];
     
     return true;
   };
 
-  // Setup MFA for the current user
   const setupMfa = async (): Promise<{ secret: string; qrCode: string } | null> => {
     if (!user) {
       addAuditLog('mfa_setup_failed', { reason: 'not_authenticated' });
       return null;
     }
     
-    // In a real app, this would generate a TOTP secret and QR code
-    const secret = 'JBSWY3DPEHPK3PXP'; // Example secret
+    const secret = 'JBSWY3DPEHPK3PXP';
     const qrCode = `otpauth://totp/DelegateEase:${user.email}?secret=${secret}&issuer=DelegateEase`;
     
     addAuditLog('mfa_setup_initiated', {}, user.id);
@@ -618,21 +578,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { secret, qrCode };
   };
 
-  // Verify MFA code and enable MFA
   const verifyMfa = async (code: string): Promise<boolean> => {
     if (!user) {
       addAuditLog('mfa_verification_failed', { reason: 'not_authenticated' });
       return false;
     }
     
-    // In a real app, this would validate the TOTP code
-    // For demo, we'll accept '123456'
     if (code !== '123456') {
       addAuditLog('mfa_verification_failed', { reason: 'invalid_code' }, user.id);
       return false;
     }
     
-    // Update user's MFA status
     const userIndex = USERS.findIndex(u => u.id === user.id);
     if (userIndex !== -1) {
       USERS[userIndex] = {
@@ -640,7 +596,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         mfaEnabled: true,
       };
       
-      // Update current user state
       setUser({
         ...user,
         mfaEnabled: true,
@@ -652,7 +607,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Disable MFA (requires password confirmation)
   const disableMfa = async (password: string): Promise<boolean> => {
     if (!user) {
       addAuditLog('mfa_disable_failed', { reason: 'not_authenticated' });
@@ -666,7 +620,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     
-    // Update user's MFA status
     const userIndex = USERS.findIndex(u => u.id === user.id);
     if (userIndex !== -1) {
       USERS[userIndex] = {
@@ -674,7 +627,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         mfaEnabled: false,
       };
       
-      // Update current user state
       setUser({
         ...user,
         mfaEnabled: false,
@@ -686,7 +638,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Get security audit log
   const getSecurityAuditLog = async (): Promise<any[]> => {
     if (!user || user.role !== 'admin') {
       addAuditLog('audit_log_access_denied', { reason: user ? 'insufficient_permissions' : 'not_authenticated' }, user?.id);
@@ -698,7 +649,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return AUDIT_LOG;
   };
 
-  // Lock an account (admin only)
   const lockAccount = async (userId: string): Promise<boolean> => {
     if (!user || user.role !== 'admin') {
       addAuditLog('account_lock_failed', { 
@@ -732,7 +682,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Unlock an account (admin only)
   const unlockAccount = async (userId: string): Promise<boolean> => {
     if (!user || user.role !== 'admin') {
       addAuditLog('account_unlock_failed', { 
@@ -763,12 +712,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return true;
   };
 
-  // Get current session timeout
   const getSessionTimeout = () => {
-    return sessionTimeout / (60 * 1000); // Return in minutes
+    return sessionTimeout / (60 * 1000);
   };
 
-  // Helper function to validate password against policy
   const validatePassword = (password: string): boolean => {
     const { minLength, requireUppercase, requireLowercase, requireNumber, requireSpecialChar } = securitySettings.passwordPolicy;
     
@@ -807,7 +754,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use the auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

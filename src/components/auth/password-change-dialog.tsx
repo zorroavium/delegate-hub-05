@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -312,7 +311,7 @@ export function PasswordChangeDialog({ open, onOpenChange }: PasswordChangeDialo
             <DialogFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={onClose}
                 disabled={isSubmitting}
               >
