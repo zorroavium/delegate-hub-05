@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
@@ -186,11 +185,11 @@ const mockApi = {
   }
 };
 
-// User form schema
+// Updated User form schema to include 'manager' role
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Must be a valid email' }),
-  role: z.enum(['admin', 'employee', 'client'], { 
+  role: z.enum(['admin', 'employee', 'client', 'manager'], { 
     required_error: 'Please select a role' 
   }),
   requiresPasswordChange: z.boolean().default(true),
@@ -429,6 +428,8 @@ export function UserManagement() {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'client':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'manager':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
     }
@@ -657,6 +658,7 @@ export function UserManagement() {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="employee">Employee</SelectItem>
                         <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
@@ -783,6 +785,7 @@ export function UserManagement() {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="employee">Employee</SelectItem>
                         <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

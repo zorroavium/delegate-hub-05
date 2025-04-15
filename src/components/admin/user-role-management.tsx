@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus, Check, X } from 'lucide-react';
 import { UserRole } from '@/context/AuthContext';
@@ -65,11 +64,11 @@ const initialUsers: User[] = [
   { id: '3', name: 'Client User', email: 'client@example.com', role: 'client' },
 ];
 
-// Form schema
+// Updated form schema to include 'manager' role
 const userFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Must be a valid email' }),
-  role: z.enum(['admin', 'employee', 'client'] as const),
+  role: z.enum(['admin', 'employee', 'client', 'manager'] as const),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -195,6 +194,8 @@ export function UserRoleManagement() {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
       case 'client':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'manager':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
     }
@@ -318,6 +319,7 @@ export function UserRoleManagement() {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="employee">Employee</SelectItem>
                         <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

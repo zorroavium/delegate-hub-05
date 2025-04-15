@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme/theme-provider';
@@ -6,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, UserRole } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { SessionTimeout } from '@/components/auth/session-timeout';
