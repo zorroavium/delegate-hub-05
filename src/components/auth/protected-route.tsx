@@ -100,14 +100,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      // Check security level - only redirect if security level is too low
+      // Check security level - only show toast but DO NOT redirect
       if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
         setShouldShowSecurityToast(true);
-        setShouldRedirect({
-          to: "/",
-          replace: true
-        });
-        return;
+        // We'll show the warning but NOT redirect
       }
 
       // Check role permissions
