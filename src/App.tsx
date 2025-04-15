@@ -32,7 +32,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (replacing cacheTime which is deprecated)
       refetchOnWindowFocus: true, // Refetch on window focus for real-time updates
       retry: 3, // Retry failed requests 3 times
       retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
@@ -151,7 +151,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/employees" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <ProtectedRoute allowedRoles={['admin', 'manager' as UserRole]}>
                     <Employees />
                   </ProtectedRoute>
                 } />
@@ -161,7 +161,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/reports" element={
-                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <ProtectedRoute allowedRoles={['admin', 'manager' as UserRole]}>
                     <Reports />
                   </ProtectedRoute>
                 } />

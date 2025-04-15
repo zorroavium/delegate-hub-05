@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 
 // Define user roles
-export type UserRole = 'admin' | 'employee' | 'client';
+export type UserRole = 'admin' | 'employee' | 'client' | 'manager';
 
 // Define user interface with enhanced security fields
 export interface User {
@@ -93,6 +93,28 @@ const defaultPermissions: Record<UserRole, PermissionMap> = {
     manageBackups: false,
     configureSystem: false,
   },
+  manager: {
+    viewDashboard: true,
+    viewTasks: true,
+    createTask: true,
+    editTask: true,
+    deleteTask: true,
+    viewEmployees: true,
+    editEmployees: true,
+    viewReports: true,
+    viewSettings: true,
+    editSettings: true,
+    manageUsers: true,
+    accessAdminPanel: true,
+    auditLog: true,
+    configureSecurity: true,
+    exportData: true,
+    importData: true,
+    manageIntegrations: true,
+    viewAuditTrail: true,
+    manageBackups: true,
+    configureSystem: true,
+  },
 };
 
 // Enhanced security settings
@@ -143,6 +165,8 @@ interface AuthContextType {
   lockAccount: (userId: string) => Promise<boolean>;
   unlockAccount: (userId: string) => Promise<boolean>;
   getSessionTimeout: () => number;
+  securityLevel?: number;
+  mfaEnabled?: boolean;
 }
 
 // Create the context
