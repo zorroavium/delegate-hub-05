@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
@@ -19,7 +18,8 @@ import {
   Download,
   X,
   Filter,
-  Clock
+  Clock,
+  Mail as MailIcon
 } from 'lucide-react';
 import { 
   Card, 
@@ -71,7 +71,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
-// Define audit log entry interface
 interface AuditLogEntry {
   id: string;
   timestamp: string;
@@ -86,7 +85,6 @@ interface AuditLogEntry {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-// Mock audit log data
 const MOCK_AUDIT_LOG: AuditLogEntry[] = Array.from({ length: 100 }, (_, i) => {
   const date = new Date();
   date.setHours(date.getHours() - i);
@@ -180,7 +178,6 @@ const MOCK_AUDIT_LOG: AuditLogEntry[] = Array.from({ length: 100 }, (_, i) => {
   };
 });
 
-// Function to get action icon
 const getActionIcon = (action: string) => {
   if (action.includes('login_success')) return <LogIn className="h-4 w-4" />;
   if (action.includes('login_failed')) return <AlertCircle className="h-4 w-4" />;
@@ -196,13 +193,11 @@ const getActionIcon = (action: string) => {
   return <FileText className="h-4 w-4" />;
 };
 
-// Function to format timestamp
 const formatTimestamp = (timestamp: string) => {
   const date = new Date(timestamp);
   return date.toLocaleString();
 };
 
-// Function to get severity badge
 const getSeverityBadge = (severity: 'low' | 'medium' | 'high' | 'critical') => {
   switch (severity) {
     case 'critical':
@@ -217,7 +212,6 @@ const getSeverityBadge = (severity: 'low' | 'medium' | 'high' | 'critical') => {
   }
 };
 
-// Function to format action name for display
 const formatActionName = (action: string) => {
   return action
     .split('_')
@@ -225,7 +219,6 @@ const formatActionName = (action: string) => {
     .join(' ');
 };
 
-// Filter options interface
 interface FilterOptions {
   action: string;
   user: string;
@@ -235,7 +228,6 @@ interface FilterOptions {
   searchTerm: string;
 }
 
-// Main Audit Log Component
 export function AuditLogViewer() {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
@@ -256,12 +248,10 @@ export function AuditLogViewer() {
   
   const logsPerPage = 10;
   
-  // Fetch audit logs
   useEffect(() => {
     const fetchAuditLogs = async () => {
       setLoading(true);
       try {
-        // In a real app, this would make an API request
         await new Promise(resolve => setTimeout(resolve, 1000));
         setAuditLogs(MOCK_AUDIT_LOG);
         setFilteredLogs(MOCK_AUDIT_LOG);
@@ -281,7 +271,6 @@ export function AuditLogViewer() {
     }
   }, [toast, hasPermission]);
   
-  // Apply filters
   useEffect(() => {
     let result = [...auditLogs];
     
@@ -320,21 +309,18 @@ export function AuditLogViewer() {
     }
     
     setFilteredLogs(result);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   }, [filters, auditLogs]);
   
-  // Get current logs for pagination
   const indexOfLastLog = currentPage * logsPerPage;
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
   const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
   const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
   
-  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
   
-  // Reset filters
   const resetFilters = () => {
     setFilters({
       action: '',
@@ -346,11 +332,9 @@ export function AuditLogViewer() {
     });
   };
   
-  // Refresh logs
   const refreshLogs = async () => {
     setLoading(true);
     try {
-      // In a real app, this would make an API request
       await new Promise(resolve => setTimeout(resolve, 1000));
       setAuditLogs(MOCK_AUDIT_LOG);
       setFilteredLogs(MOCK_AUDIT_LOG);
@@ -369,14 +353,12 @@ export function AuditLogViewer() {
     }
   };
   
-  // Export logs
   const exportLogs = () => {
     toast({
       title: 'Export started',
       description: 'Audit logs export has started. You will be notified when it is complete.',
     });
     
-    // Simulate export
     setTimeout(() => {
       toast({
         title: 'Export complete',
@@ -385,10 +367,8 @@ export function AuditLogViewer() {
     }, 2000);
   };
   
-  // Get unique users for filter
   const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.userEmail))).filter(Boolean) as string[];
   
-  // Get unique actions for filter
   const uniqueActions = Array.from(new Set(auditLogs.map(log => log.action))).sort();
   
   return (
@@ -421,7 +401,6 @@ export function AuditLogViewer() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Search and Filter Controls */}
           <div className="flex flex-col gap-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -537,7 +516,6 @@ export function AuditLogViewer() {
             )}
           </div>
           
-          {/* Audit Log Table */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -620,7 +598,7 @@ export function AuditLogViewer() {
                                       <span className="font-medium">{log.userName || 'Unknown'}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <MailIcon className="h-3.5 w-3.5 text-muted-foreground" />
                                       <span>{log.userEmail || 'Unknown'}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -665,7 +643,6 @@ export function AuditLogViewer() {
             </Table>
           </div>
           
-          {/* Pagination */}
           {!loading && filteredLogs.length > 0 && (
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
@@ -676,8 +653,12 @@ export function AuditLogViewer() {
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationPrevious 
-                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePageChange(Math.max(1, currentPage - 1));
+                      }}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
                   
@@ -697,7 +678,11 @@ export function AuditLogViewer() {
                     return (
                       <PaginationItem key={i}>
                         <PaginationLink
-                          onClick={() => handlePageChange(pageNumber)}
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(pageNumber);
+                          }}
                           isActive={currentPage === pageNumber}
                         >
                           {pageNumber}
@@ -715,7 +700,11 @@ export function AuditLogViewer() {
                   {totalPages > 5 && currentPage < totalPages - 2 && (
                     <PaginationItem>
                       <PaginationLink
-                        onClick={() => handlePageChange(totalPages)}
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(totalPages);
+                        }}
                       >
                         {totalPages}
                       </PaginationLink>
@@ -724,8 +713,12 @@ export function AuditLogViewer() {
                   
                   <PaginationItem>
                     <PaginationNext
-                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePageChange(Math.min(totalPages, currentPage + 1));
+                      }}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                     />
                   </PaginationItem>
                 </PaginationContent>

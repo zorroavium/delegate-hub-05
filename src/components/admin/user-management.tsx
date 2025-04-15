@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
@@ -265,6 +264,7 @@ export function UserManagement() {
         passwordLastChanged: new Date().toISOString(),
         failedLoginAttempts: 0,
         isLocked: false,
+        role: data.role,
       });
       
       setUsers(prev => [...prev, newUser]);

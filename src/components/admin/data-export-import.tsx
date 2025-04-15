@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Download, 
@@ -11,9 +10,10 @@ import {
   Settings, 
   ChevronDown,
   FileJson,
-  FileCsv,
   FileSpreadsheet,
-  Loader2
+  Files,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   Card, 
@@ -546,7 +546,7 @@ export function DataExportImport() {
                         <DropdownMenuLabel>Select template type</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="flex items-center">
-                          <FileCsv className="mr-2 h-4 w-4" />
+                          <Files className="mr-2 h-4 w-4" />
                           User Import Template (CSV)
                         </DropdownMenuItem>
                         <DropdownMenuItem className="flex items-center">
@@ -559,7 +559,7 @@ export function DataExportImport() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="flex items-center">
-                          <FileCsv className="mr-2 h-4 w-4" />
+                          <Files className="mr-2 h-4 w-4" />
                           Task Import Template (CSV)
                         </DropdownMenuItem>
                         <DropdownMenuItem className="flex items-center">
@@ -599,7 +599,7 @@ export function DataExportImport() {
               <Tabs defaultValue="csv" onValueChange={(v) => setExportFormat(v as any)}>
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="csv" className="flex items-center">
-                    <FileCsv className="mr-2 h-4 w-4" />
+                    <Files className="mr-2 h-4 w-4" />
                     CSV
                   </TabsTrigger>
                   <TabsTrigger value="json" className="flex items-center">
@@ -756,7 +756,7 @@ export function DataExportImport() {
                       <div className="flex items-center justify-center">
                         {(() => {
                           const ext = importFile.name.split('.').pop()?.toLowerCase();
-                          if (ext === 'csv') return <FileCsv className="h-8 w-8 text-muted-foreground" />;
+                          if (ext === 'csv') return <Files className="h-8 w-8 text-muted-foreground" />;
                           if (ext === 'json') return <FileJson className="h-8 w-8 text-muted-foreground" />;
                           if (ext === 'xlsx' || ext === 'xls') return <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />;
                           return <FileText className="h-8 w-8 text-muted-foreground" />;
