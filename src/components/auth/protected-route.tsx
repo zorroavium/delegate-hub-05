@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
   allowedRoles?: UserRole[];
   requireMFA?: boolean;
   minSecurityLevel?: number;
+  suppressSecurityNotice?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -17,6 +18,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   requireMFA = false,
   minSecurityLevel = 0,
+  suppressSecurityNotice = false,
 }) => {
   const { isAuthenticated, isLoading, user, hasRole, mfaEnabled = false } = useAuth();
   const location = useLocation();
@@ -27,7 +29,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Handle MFA toast display
   useEffect(() => {
-    if (shouldShowMFAToast) {
+    if (shouldShowMFAToast && !suppressSecurityNotice) {
       toast({
         title: "MFA Required",
         description: "This section requires multi-factor authentication. Please set up MFA in your security settings.",
@@ -35,11 +37,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       });
       setShouldShowMFAToast(false);
     }
-  }, [shouldShowMFAToast, toast]);
+  }, [shouldShowMFAToast, toast, suppressSecurityNotice]);
 
   // Handle permissions toast display
   useEffect(() => {
-    if (shouldShowPermissionToast) {
+    if (shouldShowPermissionToast && !suppressSecurityNotice) {
       toast({
         title: "Permission Denied",
         description: "You don't have the required permissions to access this area.",
@@ -47,7 +49,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       });
       setShouldShowPermissionToast(false);
     }
-  }, [shouldShowPermissionToast, toast]);
+  }, [shouldShowPermissionToast, toast, suppressSecurityNotice]);
 
   // Main authentication and permission logic
   useEffect(() => {
@@ -64,7 +66,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
       // Handle MFA requirement
       if (requireMFA && !mfaEnabled && user) {
-        setShouldShowMFAToast(true);
+        if (!suppressSecurityNotice) {
+          setShouldShowMFAToast(true);
+        }
         setShouldRedirect({
           to: "/settings?tab=security&setup=mfa",
           replace: true,
@@ -78,8 +82,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         const hasRequiredRole = allowedRoles.some(role => hasRole(role));
         
         if (!hasRequiredRole) {
-          setShouldShowPermissionToast(true);
-          console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
+          if (!suppressSecurityNotice) {
+            setShouldShowPermissionToast(true);
+            console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
+          }
           
           setShouldRedirect({
             to: "/",
@@ -91,7 +97,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       
       setShouldRedirect(null);
     }
-  }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, allowedRoles, hasRole, location]);
+  }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, allowedRoles, hasRole, location, suppressSecurityNotice]);
 
   // Loading state
   if (isLoading) {
