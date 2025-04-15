@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme/theme-provider';
@@ -170,7 +171,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/admin" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireMFA={true} minSecurityLevel={2}>
+                  <ProtectedRoute allowedRoles={['admin']} minSecurityLevel={2}>
                     <Admin />
                   </ProtectedRoute>
                 } />
