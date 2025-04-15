@@ -53,9 +53,10 @@ export function AuditLog() {
   const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Only true on initial load
   const [currentPage, setCurrentPage] = useState<number>(1);
   const isMounted = useRef<boolean>(true);
+  const dataFetchedRef = useRef<boolean>(false);
   const logsPerPage = 10;
 
   // Initialize on component mount
@@ -67,17 +68,21 @@ export function AuditLog() {
     };
   }, []);
 
-  // Fetch audit logs
+  // Fetch audit logs only once at component mount
   useEffect(() => {
+    // If data is already fetched, don't fetch again
+    if (dataFetchedRef.current) return;
+    
     const fetchLogs = async () => {
       if (!isMounted.current) return;
       
-      setIsLoading(true);
       try {
         const auditLogs = await getSecurityAuditLog();
         if (isMounted.current) {
           setLogs(auditLogs);
           setFilteredLogs(auditLogs);
+          setIsLoading(false);
+          dataFetchedRef.current = true; // Mark data as fetched
         }
       } catch (error) {
         if (isMounted.current) {
@@ -87,9 +92,6 @@ export function AuditLog() {
             description: 'Failed to fetch audit logs.',
             variant: 'destructive',
           });
-        }
-      } finally {
-        if (isMounted.current) {
           setIsLoading(false);
         }
       }
@@ -98,8 +100,11 @@ export function AuditLog() {
     fetchLogs();
   }, [getSecurityAuditLog, toast]);
 
-  // Apply filters when actionFilter or searchTerm changes
+  // Apply filters without changing loading state
   useEffect(() => {
+    // Skip filtering if initial data isn't loaded yet
+    if (isLoading) return;
+    
     let filtered = logs;
     
     // Filter by action
@@ -117,9 +122,50 @@ export function AuditLog() {
       );
     }
     
-    setFilteredLogs(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [logs, actionFilter, searchTerm]);
+    // Prevent excessive re-renders by comparing arrays
+    if (JSON.stringify(filtered) !== JSON.stringify(filteredLogs)) {
+      setFilteredLogs(filtered);
+      setCurrentPage(1); // Reset to first page when filters change
+    }
+  }, [logs, actionFilter, searchTerm, isLoading, filteredLogs]);
+
+  // Manually refresh logs with loading state
+  const refreshLogs = async () => {
+    try {
+      const auditLogs = await getSecurityAuditLog();
+      if (isMounted.current) {
+        setLogs(auditLogs);
+        // Apply existing filters to new data
+        let filtered = auditLogs;
+        if (actionFilter !== 'all') {
+          filtered = filtered.filter(log => log.action.includes(actionFilter));
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          filtered = filtered.filter(log => 
+            log.action.toLowerCase().includes(term) ||
+            log.userId.toLowerCase().includes(term) ||
+            (log.details && JSON.stringify(log.details).toLowerCase().includes(term))
+          );
+        }
+        setFilteredLogs(filtered);
+        
+        toast({
+          title: 'Logs refreshed',
+          description: 'Audit logs have been refreshed.',
+        });
+      }
+    } catch (error) {
+      if (isMounted.current) {
+        console.error('Failed to refresh audit logs:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to refresh audit logs.',
+          variant: 'destructive',
+        });
+      }
+    }
+  };
 
   // Get current logs for pagination
   const indexOfLastLog = currentPage * logsPerPage;
@@ -213,15 +259,26 @@ export function AuditLog() {
               View and export security events for compliance and troubleshooting
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={exportLogs}
-            disabled={filteredLogs.length === 0 || isLoading}
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={refreshLogs}
+            >
+              <Filter className="h-4 w-4" />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={exportLogs}
+              disabled={filteredLogs.length === 0 || isLoading}
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -266,8 +323,11 @@ export function AuditLog() {
         </div>
 
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+          <div className="flex h-60 items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em]"></div>
+              <p className="text-sm text-muted-foreground">Loading audit logs...</p>
+            </div>
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center space-y-3 rounded-md border border-dashed p-6 text-center">
@@ -297,7 +357,7 @@ export function AuditLog() {
                 </TableHeader>
                 <TableBody>
                   {currentLogs.map((log, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={`${log.timestamp}-${index}`}>
                       <TableCell className="whitespace-nowrap font-mono text-xs">
                         {formatTimestamp(log.timestamp)}
                       </TableCell>
