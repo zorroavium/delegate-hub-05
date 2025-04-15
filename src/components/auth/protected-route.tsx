@@ -26,6 +26,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const [shouldShowSecurityToast, setShouldShowSecurityToast] = useState(false);
   const [shouldShowMFAToast, setShouldShowMFAToast] = useState(false);
   const [shouldShowPermissionToast, setShouldShowPermissionToast] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState<{to: string, replace: boolean, state?: any} | null>(null);
 
   // Log access attempts for security audit
   useEffect(() => {
@@ -74,6 +75,61 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [shouldShowPermissionToast, toast]);
 
+  // Check various conditions and set redirect info in a single useEffect
+  useEffect(() => {
+    // Only run checks when auth is confirmed (not loading)
+    if (!isLoading) {
+      // Check authentication
+      if (!isAuthenticated) {
+        setShouldRedirect({
+          to: "/login",
+          replace: true,
+          state: { from: location, message: "Authentication required" }
+        });
+        return;
+      }
+
+      // Check MFA requirement
+      if (requireMFA && !mfaEnabled && user) {
+        setShouldShowMFAToast(true);
+        setShouldRedirect({
+          to: "/settings?tab=security&setup=mfa",
+          replace: true,
+          state: { from: location }
+        });
+        return;
+      }
+
+      // Check security level
+      if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
+        setShouldShowSecurityToast(true);
+        setShouldRedirect({
+          to: "/",
+          replace: true
+        });
+        return;
+      }
+
+      // Check role permissions
+      if (allowedRoles && user) {
+        const hasRequiredRole = allowedRoles.some(role => hasRole(role));
+        
+        if (!hasRequiredRole) {
+          setShouldShowPermissionToast(true);
+          
+          // Log unauthorized access attempt to security audit
+          console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
+          
+          setShouldRedirect({
+            to: "/",
+            replace: true
+          });
+          return;
+        }
+      }
+    }
+  }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, securityLevel, minSecurityLevel, allowedRoles, hasRole, location]);
+
   // Show loading state
   if (isLoading) {
     return (
@@ -84,40 +140,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Check authentication
-  if (!isAuthenticated) {
-    // Store the location they tried to access for redirect after login
-    return <Navigate to="/login" state={{ from: location, message: "Authentication required" }} replace />;
-  }
-
-  // Check MFA requirement
-  if (requireMFA && !mfaEnabled && user) {
-    setShouldShowMFAToast(true);
-    
-    // Redirect to MFA setup page
-    return <Navigate to="/settings?tab=security&setup=mfa" state={{ from: location }} replace />;
-  }
-
-  // Check security level
-  if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
-    setShouldShowSecurityToast(true);
-    
-    return <Navigate to="/" replace />;
-  }
-
-  // Check role permissions
-  if (allowedRoles && user) {
-    const hasRequiredRole = allowedRoles.some(role => hasRole(role));
-    
-    if (!hasRequiredRole) {
-      setShouldShowPermissionToast(true);
-      
-      // Log unauthorized access attempt to security audit
-      console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
-      
-      // User is authenticated but doesn't have the required role
-      return <Navigate to="/" replace />;
-    }
+  // Handle redirects
+  if (shouldRedirect) {
+    return <Navigate to={shouldRedirect.to} state={shouldRedirect.state} replace={shouldRedirect.replace} />;
   }
 
   // User passes all checks
