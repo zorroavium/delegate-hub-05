@@ -317,7 +317,10 @@ export function PasswordChangeDialog({ open, onOpenChange }: PasswordChangeDialo
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? 'Changing Password...' : 'Change Password'}
               </Button>
             </DialogFooter>
