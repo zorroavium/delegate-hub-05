@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = DayPickerProps & {
   onDayDoubleClick?: (day: Date) => void;
+  onDayClick?: (day: Date) => void;
 };
 
 function Calendar({
@@ -15,6 +16,7 @@ function Calendar({
   classNames,
   showOutsideDays = true,
   onDayDoubleClick,
+  onDayClick,
   ...props
 }: CalendarProps) {
   // Handle double click on days
@@ -23,6 +25,13 @@ function Calendar({
       onDayDoubleClick(day);
     }
   }, [onDayDoubleClick]);
+
+  // Handle click on days
+  const handleDayClick = React.useCallback((day: Date) => {
+    if (onDayClick) {
+      onDayClick(day);
+    }
+  }, [onDayClick]);
 
   return (
     <DayPicker
@@ -80,6 +89,7 @@ function Calendar({
                 modifiers.today && "bg-accent text-accent-foreground",
                 modifiers.disabled && "text-muted-foreground opacity-50"
               )}
+              onClick={() => !modifiers.disabled && handleDayClick(date)}
               onDoubleClick={() => !modifiers.disabled && handleDayDoubleClick(date)}
             >
               {date.getDate()}

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,31 @@ import {
   Calendar as CalendarIcon, 
   Clock, 
   Users,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
-import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, isToday } from 'date-fns';
+import { 
+  format, 
+  addDays, 
+  subDays,
+  addMonths,
+  subMonths,
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameDay, 
+  parseISO, 
+  isToday,
+  startOfMonth,
+  endOfMonth,
+  eachWeekOfInterval,
+  isSameMonth
+} from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -48,6 +67,8 @@ export interface CalendarEvent {
     color: string;
   }>;
   description?: string;
+  googleCalendarId?: string;
+  synced?: boolean;
 }
 
 const eventSchema = z.object({
@@ -59,11 +80,13 @@ const eventSchema = z.object({
   time: z.string().min(1, "Time is required"),
   type: z.enum(["task", "meeting", "deadline"]),
   assigneeIds: z.array(z.string()).min(1, "At least one assignee is required"),
+  syncToGoogleCalendar: z.boolean().optional().default(false),
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
 
-const EventCard = ({ event }: { event: CalendarEvent }) => {
+// Event card component
+const EventCard = ({ event, onSync }: { event: CalendarEvent, onSync?: (event: CalendarEvent) => void }) => {
   const eventTypeColors = {
     task: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500',
     meeting: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-500',
@@ -82,12 +105,29 @@ const EventCard = ({ event }: { event: CalendarEvent }) => {
                 {event.type === 'task' ? 'Task' : event.type === 'meeting' ? 'Meeting' : 'Deadline'}
               </Badge>
               <span className="text-xs text-muted-foreground">{event.time}</span>
+              {event.synced && (
+                <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
+                  <CheckCircle2 size={12} className="mr-1" />
+                  Synced
+                </Badge>
+              )}
             </div>
             <h4 className="font-medium text-sm">{event.title}</h4>
             {event.description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
             )}
           </div>
+          {onSync && !event.synced && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0" 
+              onClick={() => onSync(event)}
+              title="Sync to Google Calendar"
+            >
+              <ArrowUpRight size={14} />
+            </Button>
+          )}
         </div>
         <div className="mt-2 flex items-center gap-1">
           {event.assignees.slice(0, 3).map((assignee) => (
@@ -106,26 +146,133 @@ const EventCard = ({ event }: { event: CalendarEvent }) => {
   );
 };
 
-const DayCell = ({ date, events }: { date: Date; events: any[] }) => {
-  const dayEvents = events.filter(event => isSameDay(parseISO(event.date), date));
+// Event for month view
+const MonthViewEvent = ({ event }: { event: CalendarEvent }) => {
+  const eventTypeColors = {
+    task: 'bg-blue-500',
+    meeting: 'bg-purple-500',
+    deadline: 'bg-red-500',
+  };
+  
+  const eventColor = eventTypeColors[event.type as keyof typeof eventTypeColors] || eventTypeColors.task;
   
   return (
-    <div className="min-h-[120px] border-t p-1">
-      <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
-      <div className="space-y-1">
-        {dayEvents.map(event => (
-          <div key={event.id} className="text-xs p-1 rounded bg-blue-50 dark:bg-blue-900/20 truncate">
-            {event.title}
-          </div>
-        ))}
-        {dayEvents.length > 2 && (
-          <div className="text-xs text-muted-foreground text-center">+{dayEvents.length - 2} more</div>
-        )}
-      </div>
+    <div className={`text-xs px-1 py-0.5 rounded-sm truncate text-white ${eventColor} mb-1`}>
+      {event.title}
     </div>
   );
 };
 
+// Day cell for month view
+const DayCell = ({ 
+  date, 
+  events, 
+  isCurrentMonth, 
+  onDayClick,
+  onAddEvent
+}: { 
+  date: Date; 
+  events: CalendarEvent[]; 
+  isCurrentMonth: boolean;
+  onDayClick: (date: Date) => void;
+  onAddEvent: (date: Date) => void;
+}) => {
+  const dayEvents = events.filter(event => isSameDay(parseISO(event.date), date));
+  
+  return (
+    <div 
+      className={cn(
+        "min-h-[100px] border p-1 relative",
+        isCurrentMonth ? "bg-background" : "bg-muted/20",
+        isToday(date) ? "border-primary" : "border-border",
+        "hover:bg-muted/20 cursor-pointer transition-colors"
+      )}
+      onClick={() => onDayClick(date)}
+      onDoubleClick={() => onAddEvent(date)}
+    >
+      <div className={cn(
+        "text-sm font-medium mb-1 text-center",
+        !isCurrentMonth && "text-muted-foreground",
+        isToday(date) && "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center mx-auto"
+      )}>
+        {format(date, 'd')}
+      </div>
+      <div className="space-y-1 max-h-[80px] overflow-hidden">
+        {dayEvents.slice(0, 3).map(event => (
+          <MonthViewEvent key={event.id} event={event} />
+        ))}
+        {dayEvents.length > 3 && (
+          <div className="text-xs text-muted-foreground text-center">+{dayEvents.length - 3} more</div>
+        )}
+      </div>
+      
+      {isCurrentMonth && (
+        <Button 
+          size="icon" 
+          variant="ghost" 
+          className="h-5 w-5 absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddEvent(date);
+          }}
+        >
+          <Plus size={12} />
+        </Button>
+      )}
+    </div>
+  );
+};
+
+// Month view grid
+const MonthViewGrid = ({ 
+  currentDate, 
+  events, 
+  onDayClick, 
+  onAddEvent 
+}: { 
+  currentDate: Date; 
+  events: CalendarEvent[]; 
+  onDayClick: (date: Date) => void;
+  onAddEvent: (date: Date) => void;
+}) => {
+  const firstDayOfMonth = startOfMonth(currentDate);
+  const lastDayOfMonth = endOfMonth(currentDate);
+  
+  // Get all weeks that include days of this month
+  const calendarWeeks = eachWeekOfInterval(
+    { 
+      start: startOfWeek(firstDayOfMonth), 
+      end: endOfWeek(lastDayOfMonth) 
+    }
+  );
+  
+  return (
+    <div className="grid grid-cols-7 gap-px">
+      {/* Day headers */}
+      {eachDayOfInterval({ start: startOfWeek(new Date()), end: endOfWeek(new Date()) }).map((day) => (
+        <div key={format(day, 'EEE')} className="text-center p-1 font-medium text-sm">
+          {format(day, 'EEE')}
+        </div>
+      ))}
+      
+      {/* Calendar grid */}
+      {calendarWeeks.map(week => 
+        eachDayOfInterval({ start: week, end: addDays(week, 6) }).map(day => (
+          <DayCell 
+            key={day.toISOString()} 
+            date={day} 
+            events={events}
+            isCurrentMonth={isSameMonth(day, currentDate)}
+            onDayClick={onDayClick}
+            onAddEvent={onAddEvent}
+          />
+        ))
+      )}
+    </div>
+  );
+};
+
+// Initial events data
 const initialEvents: CalendarEvent[] = [
   {
     id: '1',
@@ -136,6 +283,7 @@ const initialEvents: CalendarEvent[] = [
     assignees: [
       { id: '101', name: 'Sarah Johnson', avatar: 'SJ', color: 'bg-blue-500' },
     ],
+    synced: true,
   },
   {
     id: '2',
@@ -192,17 +340,52 @@ const initialEvents: CalendarEvent[] = [
   },
 ];
 
+// Month title display component
 const DisplayMonth = ({ month }: { month: Date }) => (
   <div className="text-center mb-4">
     <h3 className="text-lg font-medium">{format(month, 'MMMM yyyy')}</h3>
   </div>
 );
 
+// Google Calendar connection status component
+const GoogleCalendarStatus = ({ 
+  isConnected, 
+  onConnect 
+}: { 
+  isConnected: boolean; 
+  onConnect: () => void 
+}) => (
+  <Card className="mb-4">
+    <CardContent className="p-4 flex items-center justify-between">
+      <div className="flex items-center">
+        <CalendarIcon className="mr-2 h-5 w-5 text-muted-foreground" />
+        <div>
+          <h3 className="text-sm font-medium">Google Calendar</h3>
+          <p className="text-xs text-muted-foreground">
+            {isConnected ? 'Connected and syncing' : 'Not connected'}
+          </p>
+        </div>
+      </div>
+      {isConnected ? (
+        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500">
+          <CheckCircle2 size={12} className="mr-1" />
+          Connected
+        </Badge>
+      ) : (
+        <Button size="sm" onClick={onConnect}>Connect</Button>
+      )}
+    </CardContent>
+  </Card>
+);
+
+// Main Calendar page component
 const CalendarPage = () => {
   const [date, setDate] = useState<Date>(new Date());
-  const [view, setView] = useState('week');
+  const [view, setView] = useState('month');
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [isGCalConnected, setIsGCalConnected] = useState(false);
+  const [connectingGCal, setConnectingGCal] = useState(false);
   const { toast } = useToast();
   const { employees } = useEmployeeStore();
   
@@ -210,15 +393,18 @@ const CalendarPage = () => {
   const weekEnd = endOfWeek(date);
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
   
-  const getDayEvents = () => {
+  // Get events for specific day
+  const getDayEvents = useCallback(() => {
     return events.filter(event => isSameDay(parseISO(event.date), date));
-  };
+  }, [events, date]);
   
+  // Get events for current week
   const currentWeekEvents = events.filter(event => {
     const eventDate = parseISO(event.date);
     return eventDate >= weekStart && eventDate <= weekEnd;
   });
   
+  // Get upcoming events
   const upcomingEvents = events
     .filter(event => {
       const eventDate = parseISO(event.date);
@@ -227,6 +413,7 @@ const CalendarPage = () => {
     .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
     .slice(0, 5);
   
+  // Organize events by day for week view
   const eventsByDay = weekDays.map(day => {
     return {
       date: day,
@@ -234,6 +421,7 @@ const CalendarPage = () => {
     };
   });
   
+  // Set up form for adding events
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
@@ -243,23 +431,28 @@ const CalendarPage = () => {
       time: "",
       type: "meeting",
       assigneeIds: [],
+      syncToGoogleCalendar: false,
     },
   });
   
+  // Handle date click in calendar
   const handleDateClick = (selectedDate: Date) => {
     setDate(selectedDate);
     setView('day');
   };
   
+  // Handle adding event for a specific date
   const handleAddEventWithDate = (selectedDate: Date) => {
     form.setValue('date', selectedDate);
     setIsAddEventOpen(true);
   };
   
+  // Handle double click on calendar day
   const handleDayDoubleClick = (day: Date) => {
     handleAddEventWithDate(day);
   };
   
+  // Handle form submission
   const onSubmit = (data: EventFormValues) => {
     const assignees = data.assigneeIds.map(id => {
       const employee = employees.find(e => e.id === id);
@@ -279,6 +472,7 @@ const CalendarPage = () => {
       time: data.time,
       type: data.type,
       assignees,
+      synced: data.syncToGoogleCalendar && isGCalConnected,
     };
     
     setEvents(prev => [...prev, newEvent]);
@@ -289,9 +483,17 @@ const CalendarPage = () => {
       description: `"${data.title}" has been scheduled for ${format(data.date, 'MMM dd, yyyy')}`
     });
     
+    if (data.syncToGoogleCalendar && isGCalConnected) {
+      toast({
+        title: "Google Calendar Sync",
+        description: `"${data.title}" has been synced to Google Calendar`,
+      });
+    }
+    
     form.reset();
   };
   
+  // Team availability data
   const teamAvailability = employees.map(emp => ({
     id: emp.id,
     name: emp.name,
@@ -300,18 +502,68 @@ const CalendarPage = () => {
     status: Math.random() > 0.3 ? 'active' : (Math.random() > 0.5 ? 'inactive' : 'away')
   })).slice(0, 4);
   
+  // Handle Google Calendar connection
   const handleGoogleCalendarConnect = () => {
+    setConnectingGCal(true);
+    
     toast({
       title: "Google Calendar Integration",
       description: "Connecting to Google Calendar...",
     });
     
+    // Simulate connection process
     setTimeout(() => {
+      setIsGCalConnected(true);
+      setConnectingGCal(false);
+      
       toast({
         title: "Connected Successfully",
         description: "Your events have been synced with Google Calendar.",
       });
     }, 2000);
+  };
+  
+  // Handle month navigation
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setDate(prev => direction === 'next' ? addMonths(prev, 1) : subMonths(prev, 1));
+  };
+  
+  // Handle sync single event to Google Calendar
+  const syncEventToGCal = (event: CalendarEvent) => {
+    if (!isGCalConnected) {
+      toast({
+        title: "Google Calendar Not Connected",
+        description: "Please connect to Google Calendar first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Syncing Event",
+      description: `Syncing "${event.title}" to Google Calendar...`,
+    });
+    
+    // Simulate syncing process
+    setTimeout(() => {
+      setEvents(prev => 
+        prev.map(e => 
+          e.id === event.id 
+            ? { ...e, synced: true, googleCalendarId: `gcal-${Date.now()}` } 
+            : e
+        )
+      );
+      
+      toast({
+        title: "Event Synced",
+        description: `"${event.title}" has been synced to Google Calendar.`,
+      });
+    }, 1500);
+  };
+  
+  // Navigation to today
+  const goToToday = () => {
+    setDate(new Date());
   };
   
   return (
@@ -330,10 +582,17 @@ const CalendarPage = () => {
                 <SelectItem value="day">Day</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={handleGoogleCalendarConnect} className="gap-1">
+            <Button 
+              variant="outline" 
+              onClick={handleGoogleCalendarConnect} 
+              className="gap-1"
+              disabled={isGCalConnected || connectingGCal}
+            >
               <CalendarIcon size={16} />
-              <span className="hidden md:inline">Sync</span>
-              <ArrowUpRight size={14} />
+              <span className="hidden md:inline">
+                {connectingGCal ? 'Connecting...' : isGCalConnected ? 'Synced' : 'Sync'}
+              </span>
+              {isGCalConnected ? <CheckCircle2 size={14} className="text-green-500" /> : <ArrowUpRight size={14} />}
             </Button>
             <Button onClick={() => setIsAddEventOpen(true)}>
               <Plus size={16} className="mr-1" />
@@ -342,18 +601,34 @@ const CalendarPage = () => {
           </div>
         </div>
         
+        {/* Google Calendar status (only show if not connected) */}
+        {!isGCalConnected && (
+          <GoogleCalendarStatus 
+            isConnected={isGCalConnected} 
+            onConnect={handleGoogleCalendarConnect} 
+          />
+        )}
+        
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6">
               <div className="flex items-center gap-2 mb-4 md:mb-0">
-                <Button variant="outline" size="icon" onClick={() => setDate(addDays(date, -30))}>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => view === 'month' ? navigateMonth('prev') : setDate(subDays(date, 7))}
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <h2 className="text-xl font-semibold">{format(date, 'MMMM yyyy')}</h2>
-                <Button variant="outline" size="icon" onClick={() => setDate(addDays(date, 30))}>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => view === 'month' ? navigateMonth('next') : setDate(addDays(date, 7))}
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" onClick={() => setDate(new Date())}>
+                <Button variant="ghost" onClick={goToToday}>
                   Today
                 </Button>
               </div>
@@ -377,15 +652,13 @@ const CalendarPage = () => {
             </div>
             
             <Tabs value={view} onValueChange={setView}>
-              <TabsContent value="month">
+              <TabsContent value="month" className="mt-0">
                 <div className="rounded-md border">
-                  <CalendarComponent
-                    mode="single"
-                    selected={date}
-                    onSelect={(newDate) => newDate && setDate(newDate)}
-                    onDayClick={(day) => handleDateClick(day)}
-                    onDayDoubleClick={handleDayDoubleClick}
-                    className="p-3 pointer-events-auto"
+                  <MonthViewGrid 
+                    currentDate={date} 
+                    events={events} 
+                    onDayClick={handleDateClick}
+                    onAddEvent={handleAddEventWithDate}
                   />
                 </div>
               </TabsContent>
@@ -396,7 +669,12 @@ const CalendarPage = () => {
                     {weekDays.map((day) => (
                       <div key={day.toString()} className="text-sm font-medium">
                         {format(day, 'EEE')}
-                        <div className="text-xs text-muted-foreground">{format(day, 'MMM d')}</div>
+                        <div className={cn(
+                          "text-xs mx-auto w-6 h-6 flex items-center justify-center rounded-full", 
+                          isToday(day) ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                        )}>
+                          {format(day, 'd')}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -405,15 +683,12 @@ const CalendarPage = () => {
                     {eventsByDay.map((day) => (
                       <div 
                         key={day.date.toString()} 
-                        className="border rounded-md p-2 min-h-[200px] cursor-pointer"
+                        className={cn(
+                          "border rounded-md p-2 min-h-[200px] cursor-pointer",
+                          isToday(day.date) && "border-primary"
+                        )}
                         onDoubleClick={() => handleAddEventWithDate(day.date)}
                       >
-                        <div className="text-center mb-2">
-                          <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full 
-                            ${isSameDay(day.date, new Date()) ? 'bg-primary text-primary-foreground' : ''}`}>
-                            {format(day.date, 'd')}
-                          </div>
-                        </div>
                         <div className="space-y-1">
                           {day.events.map((event) => (
                             <div 
@@ -423,10 +698,25 @@ const CalendarPage = () => {
                               <div className="flex items-center gap-1">
                                 <div className={`h-2 w-2 rounded-full ${event.type === 'task' ? 'bg-blue-500' : event.type === 'meeting' ? 'bg-purple-500' : 'bg-red-500'}`}></div>
                                 <span>{event.title}</span>
+                                {event.synced && <CheckCircle2 size={10} className="text-green-500 ml-auto" />}
                               </div>
                               <div className="text-[10px] text-muted-foreground mt-0.5">{event.time}</div>
                             </div>
                           ))}
+                          
+                          {day.events.length === 0 && (
+                            <div className="flex flex-col items-center justify-center h-full min-h-[120px] text-muted-foreground">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-xs"
+                                onClick={() => handleAddEventWithDate(day.date)}
+                              >
+                                <Plus size={12} className="mr-1" />
+                                Add
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -441,7 +731,7 @@ const CalendarPage = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <Clock size={16} className="text-muted-foreground" />
-                      <h4 className="font-medium">Scheduled Events</h4>
+                      <h4 className="font-medium">{format(date, 'EEEE, MMMM d, yyyy')}</h4>
                       <Button 
                         variant="ghost" 
                         size="sm" 
@@ -453,19 +743,29 @@ const CalendarPage = () => {
                       </Button>
                     </div>
                     
-                    {getDayEvents().map(event => (
-                      <EventCard key={event.id} event={event} />
-                    ))}
-                    
-                    {getDayEvents().length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <p>No events scheduled for today</p>
-                        <Button variant="outline" className="mt-2" onClick={() => handleAddEventWithDate(date)}>
-                          <Plus size={16} className="mr-1" />
-                          Add Event
-                        </Button>
-                      </div>
-                    )}
+                    <div className="space-y-2">
+                      {getDayEvents().map(event => (
+                        <EventCard 
+                          key={event.id} 
+                          event={event} 
+                          onSync={!event.synced && isGCalConnected ? syncEventToGCal : undefined} 
+                        />
+                      ))}
+                      
+                      {getDayEvents().length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <p>No events scheduled for this day</p>
+                          <Button 
+                            variant="outline" 
+                            className="mt-2" 
+                            onClick={() => handleAddEventWithDate(date)}
+                          >
+                            <Plus size={16} className="mr-1" />
+                            Add Event
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </TabsContent>
@@ -483,12 +783,20 @@ const CalendarPage = () => {
                 <div className="space-y-2">
                   {upcomingEvents.length > 0 ? (
                     upcomingEvents.map(event => (
-                      <EventCard key={event.id} event={event} />
+                      <EventCard 
+                        key={event.id} 
+                        event={event} 
+                        onSync={!event.synced && isGCalConnected ? syncEventToGCal : undefined}
+                      />
                     ))
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <p>No upcoming events</p>
-                      <Button variant="outline" className="mt-2" onClick={() => setIsAddEventOpen(true)}>
+                      <Button 
+                        variant="outline" 
+                        className="mt-2" 
+                        onClick={() => setIsAddEventOpen(true)}
+                      >
                         <Plus size={16} className="mr-1" />
                         Add Event
                       </Button>
@@ -554,6 +862,7 @@ const CalendarPage = () => {
                     <FormControl>
                       <Input placeholder="Event title" {...field} />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -591,6 +900,7 @@ const CalendarPage = () => {
                           />
                         </PopoverContent>
                       </Popover>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -619,6 +929,7 @@ const CalendarPage = () => {
                           <SelectItem value="4:00 PM - 5:00 PM">4:00 PM - 5:00 PM</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -640,6 +951,7 @@ const CalendarPage = () => {
                         <SelectItem value="deadline">Deadline</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -665,6 +977,7 @@ const CalendarPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -682,9 +995,32 @@ const CalendarPage = () => {
                         {...field}
                       />
                     </FormControl>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
+              
+              {isGCalConnected && (
+                <FormField
+                  control={form.control}
+                  name="syncToGoogleCalendar"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal">
+                        Sync to Google Calendar
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              )}
               
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsAddEventOpen(false)}>
