@@ -89,7 +89,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
         setSubmitState('success');
         toast({
           title: 'Reset email sent',
-          description: 'If this email exists in our system, you'll receive password reset instructions shortly.',
+          description: "If this email exists in our system, you'll receive password reset instructions shortly.",
           variant: 'default',
         });
       }
