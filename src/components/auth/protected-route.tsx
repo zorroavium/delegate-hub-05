@@ -41,7 +41,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
   }, [user, location.pathname, securityLevel, minSecurityLevel]);
 
-  // Handle toast notifications in a separate effect to avoid re-renders during render
+  // Handle toast notifications in separate effects to avoid re-renders during render
   useEffect(() => {
     if (shouldShowSecurityToast) {
       toast({
@@ -89,7 +89,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      // Check MFA requirement
+      // Check MFA requirement - only show toast and redirect if MFA is not set up
       if (requireMFA && !mfaEnabled && user) {
         setShouldShowMFAToast(true);
         setShouldRedirect({
@@ -100,7 +100,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      // Check security level
+      // Check security level - only redirect if security level is too low
       if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
         setShouldShowSecurityToast(true);
         setShouldRedirect({
@@ -127,6 +127,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return;
         }
       }
+      
+      // Clear any previous redirect if all checks pass
+      setShouldRedirect(null);
     }
   }, [isLoading, isAuthenticated, requireMFA, mfaEnabled, user, securityLevel, minSecurityLevel, allowedRoles, hasRole, location]);
 
