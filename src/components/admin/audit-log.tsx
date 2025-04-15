@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Shield, Filter, Download, Search, Info, AlertTriangle, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { Shield, Filter, Download, Search, Info, AlertTriangle, X, RefreshCw, Calendar, Clock } from 'lucide-react';
+import { format, subDays, isAfter, parseISO } from 'date-fns';
 
 import {
   Card,
@@ -27,16 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
 import {
   Pagination,
   PaginationContent,
@@ -45,21 +40,75 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+
+interface AuditLogEntry {
+  timestamp: string;
+  action: string;
+  userId: string;
+  ip: string;
+  details: Record<string, any>;
+}
+
+interface FilterState {
+  action: string;
+  timeRange: string;
+  searchTerm: string;
+  userId: string | null;
+  startDate: Date | null;
+  endDate: Date | null;
+}
 
 export function AuditLog() {
   const { getSecurityAuditLog } = useAuth();
   const { toast } = useToast();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
-  const [actionFilter, setActionFilter] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Only true on initial load
+  
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [filteredLogs, setFilteredLogs] = useState<AuditLogEntry[]>([]);
+  const [initialLoadComplete, setInitialLoadComplete] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  
+  const [filters, setFilters] = useState<FilterState>({
+    action: 'all',
+    timeRange: '7days',
+    searchTerm: '',
+    userId: null,
+    startDate: subDays(new Date(), 7),
+    endDate: new Date(),
+  });
+  
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const logsPerPage = 10;
+  
   const isMounted = useRef<boolean>(true);
   const dataFetchedRef = useRef<boolean>(false);
-  const logsPerPage = 10;
+  
+  const uniqueUserIds = Array.from(new Set(logs.map(log => log.userId)));
+  
+  const dateRangePresets = {
+    'today': { start: new Date(), end: new Date() },
+    '24hours': { start: subDays(new Date(), 1), end: new Date() },
+    '7days': { start: subDays(new Date(), 7), end: new Date() },
+    '30days': { start: subDays(new Date(), 30), end: new Date() },
+    '90days': { start: subDays(new Date(), 90), end: new Date() },
+  };
 
-  // Initialize on component mount
   useEffect(() => {
     isMounted.current = true;
     
@@ -68,10 +117,8 @@ export function AuditLog() {
     };
   }, []);
 
-  // Fetch audit logs only once at component mount
   useEffect(() => {
-    // If data is already fetched, don't fetch again
-    if (dataFetchedRef.current) return;
+    if (dataFetchedRef.current && !refreshing) return;
     
     const fetchLogs = async () => {
       if (!isMounted.current) return;
@@ -80,100 +127,168 @@ export function AuditLog() {
         const auditLogs = await getSecurityAuditLog();
         if (isMounted.current) {
           setLogs(auditLogs);
-          setFilteredLogs(auditLogs);
-          setIsLoading(false);
-          dataFetchedRef.current = true; // Mark data as fetched
+          dataFetchedRef.current = true;
+          setRefreshing(false);
+          setInitialLoadComplete(true);
         }
       } catch (error) {
         if (isMounted.current) {
           console.error('Failed to fetch audit logs:', error);
           toast({
-            title: 'Error',
-            description: 'Failed to fetch audit logs.',
-            variant: 'destructive',
+            title: "Error",
+            description: "Failed to fetch audit logs.",
+            variant: "destructive",
           });
-          setIsLoading(false);
+          setRefreshing(false);
+          setInitialLoadComplete(true);
         }
       }
     };
 
     fetchLogs();
-  }, [getSecurityAuditLog, toast]);
+  }, [getSecurityAuditLog, toast, refreshing]);
 
-  // Apply filters without changing loading state
   useEffect(() => {
-    // Skip filtering if initial data isn't loaded yet
-    if (isLoading) return;
+    if (!initialLoadComplete) return;
     
-    let filtered = logs;
+    let filtered = [...logs];
     
-    // Filter by action
-    if (actionFilter !== 'all') {
-      filtered = filtered.filter(log => log.action.includes(actionFilter));
+    if (filters.action !== 'all') {
+      filtered = filtered.filter(log => log.action.includes(filters.action));
     }
     
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    if (filters.startDate && filters.endDate) {
+      filtered = filtered.filter(log => {
+        const logDate = parseISO(log.timestamp);
+        return (
+          isAfter(logDate, filters.startDate!) && 
+          isAfter(new Date(filters.endDate!.setHours(23, 59, 59, 999)), logDate)
+        );
+      });
+    }
+    
+    if (filters.userId) {
+      filtered = filtered.filter(log => log.userId === filters.userId);
+    }
+    
+    if (filters.searchTerm) {
+      const term = filters.searchTerm.toLowerCase();
       filtered = filtered.filter(log => 
         log.action.toLowerCase().includes(term) ||
         log.userId.toLowerCase().includes(term) ||
+        log.ip.toLowerCase().includes(term) ||
         (log.details && JSON.stringify(log.details).toLowerCase().includes(term))
       );
     }
     
-    // Prevent excessive re-renders by comparing arrays
-    if (JSON.stringify(filtered) !== JSON.stringify(filteredLogs)) {
-      setFilteredLogs(filtered);
-      setCurrentPage(1); // Reset to first page when filters change
-    }
-  }, [logs, actionFilter, searchTerm, isLoading, filteredLogs]);
+    setFilteredLogs(filtered);
+    setCurrentPage(1);
+  }, [logs, filters, initialLoadComplete]);
 
-  // Manually refresh logs with loading state
-  const refreshLogs = async () => {
-    try {
-      const auditLogs = await getSecurityAuditLog();
-      if (isMounted.current) {
-        setLogs(auditLogs);
-        // Apply existing filters to new data
-        let filtered = auditLogs;
-        if (actionFilter !== 'all') {
-          filtered = filtered.filter(log => log.action.includes(actionFilter));
-        }
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          filtered = filtered.filter(log => 
-            log.action.toLowerCase().includes(term) ||
-            log.userId.toLowerCase().includes(term) ||
-            (log.details && JSON.stringify(log.details).toLowerCase().includes(term))
-          );
-        }
-        setFilteredLogs(filtered);
-        
-        toast({
-          title: 'Logs refreshed',
-          description: 'Audit logs have been refreshed.',
-        });
-      }
-    } catch (error) {
-      if (isMounted.current) {
-        console.error('Failed to refresh audit logs:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to refresh audit logs.',
-          variant: 'destructive',
-        });
-      }
+  const handleDateRangeChange = (range: string) => {
+    if (range === 'custom') {
+      setFilters(prev => ({
+        ...prev,
+        timeRange: 'custom',
+      }));
+    } else {
+      const preset = dateRangePresets[range as keyof typeof dateRangePresets];
+      setFilters(prev => ({
+        ...prev,
+        timeRange: range,
+        startDate: preset.start,
+        endDate: preset.end,
+      }));
     }
   };
 
-  // Get current logs for pagination
+  const handleDateChange = (start: Date | null, end: Date | null) => {
+    setFilters(prev => ({
+      ...prev,
+      timeRange: 'custom',
+      startDate: start,
+      endDate: end,
+    }));
+  };
+
+  const updateFilter = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      action: 'all',
+      timeRange: '7days',
+      searchTerm: '',
+      userId: null,
+      startDate: dateRangePresets['7days'].start,
+      endDate: dateRangePresets['7days'].end,
+    });
+  };
+
+  const refreshLogs = useCallback(async () => {
+    if (refreshing) return;
+    
+    setRefreshing(true);
+    dataFetchedRef.current = false;
+  }, [refreshing]);
+
+  const exportLogs = () => {
+    const formattedLogs = filteredLogs.map(log => ({
+      timestamp: formatTimestamp(log.timestamp),
+      action: log.action.replace(/_/g, ' '),
+      userId: log.userId,
+      ip: log.ip,
+      details: JSON.stringify(log.details)
+    }));
+    
+    const header = ['Timestamp', 'Action', 'User ID', 'IP Address', 'Details'];
+    
+    const csvContent = [
+      header.join(','),
+      ...formattedLogs.map(row => 
+        Object.values(row).map(cell => 
+          typeof cell === 'string' ? `"${cell.replace(/"/g, '""')}"` : `"${cell}"`)
+        .join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `security-audit-log-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Export Successful',
+      description: `${filteredLogs.length} log entries exported to CSV.`,
+    });
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      return format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss');
+    } catch (error) {
+      return timestamp;
+    }
+  };
+
+  const actionTypes = ['all', ...Array.from(new Set(logs.map(log => {
+    const parts = log.action.split('_');
+    return parts[0] || 'unknown';
+  })))];
+
   const indexOfLastLog = currentPage * logsPerPage;
   const indexOfFirstLog = indexOfLastLog - logsPerPage;
   const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
   const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
 
-  // Action badge styles
   const getActionBadgeStyles = (action: string) => {
     if (action.includes('login_success') || action.includes('_success')) {
       return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
@@ -193,61 +308,12 @@ export function AuditLog() {
     return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
   };
 
-  // Format timestamp
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      return format(new Date(timestamp), 'yyyy-MM-dd HH:mm:ss');
-    } catch (error) {
-      return timestamp;
-    }
-  };
-
-  // Export logs as CSV
-  const exportLogs = () => {
-    const csvContent = [
-      ['Timestamp', 'Action', 'User ID', 'IP Address', 'Details'],
-      ...filteredLogs.map(log => [
-        formatTimestamp(log.timestamp),
-        log.action,
-        log.userId,
-        log.ip,
-        JSON.stringify(log.details)
-      ])
-    ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `audit-log-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: 'Export successful',
-      description: 'Audit logs have been exported to CSV.',
-    });
-  };
-
-  // Generate unique action types for filter dropdown
-  const actionTypes = ['all', ...Array.from(new Set(logs.map(log => 
-    log.action.split('_')[0] // Group by prefix (login, password, mfa, etc.)
-  )))];
-
-  // Handle page change
   const changePage = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Clear filters
-  const clearFilters = () => {
-    setActionFilter('all');
-    setSearchTerm('');
-  };
-
   return (
-    <Card>
+    <Card className="shadow-md">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -256,73 +322,166 @@ export function AuditLog() {
               Security Audit Log
             </CardTitle>
             <CardDescription>
-              View and export security events for compliance and troubleshooting
+              Track and analyze security events for compliance and threat detection
             </CardDescription>
           </div>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="flex items-center gap-2"
+              className={cn("flex items-center gap-2", refreshing && "opacity-50")}
               onClick={refreshLogs}
+              disabled={refreshing}
             >
-              <Filter className="h-4 w-4" />
-              Refresh
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              {refreshing ? "Refreshing..." : "Refresh"}
             </Button>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={exportLogs}
-              disabled={filteredLogs.length === 0 || isLoading}
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={exportLogs}>
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.print()}>
+                  Print Logs
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex flex-1 items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search logs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-            {(searchTerm || actionFilter !== 'all') && (
+        <div className="mb-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-1 items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search logs..."
+                value={filters.searchTerm}
+                onChange={(e) => updateFilter('searchTerm', e.target.value)}
+                className="flex-1"
+              />
+              {filters.searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => updateFilter('searchTerm', '')}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select
+                value={filters.action}
+                onValueChange={(value) => updateFilter('action', value)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by action" />
+                </SelectTrigger>
+                <SelectContent>
+                  {actionTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type === 'all' ? 'All actions' : `${type.charAt(0).toUpperCase() + type.slice(1)} events`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Select
+                value={filters.timeRange}
+                onValueChange={handleDateRangeChange}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Time range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="24hours">Last 24 hours</SelectItem>
+                  <SelectItem value="7days">Last 7 days</SelectItem>
+                  <SelectItem value="30days">Last 30 days</SelectItem>
+                  <SelectItem value="90days">Last 90 days</SelectItem>
+                  <SelectItem value="custom">Custom range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {filters.timeRange === 'custom' && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {filters.startDate && filters.endDate 
+                        ? `${format(filters.startDate, 'MMM d')} - ${format(filters.endDate, 'MMM d, yyyy')}`
+                        : 'Select dates'}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground">Custom date range picker would be implemented here</p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+            
+            {uniqueUserIds.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Select
+                  value={filters.userId || ''}
+                  onValueChange={(value) => updateFilter('userId', value === '' ? null : value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All users</SelectItem>
+                    {uniqueUserIds.map((userId) => (
+                      <SelectItem key={userId} value={userId}>
+                        {userId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {(filters.action !== 'all' || filters.searchTerm || filters.userId || filters.timeRange !== '7days') && (
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={clearFilters}
-                className="h-8 w-8"
+                className="flex items-center gap-2"
               >
                 <X className="h-4 w-4" />
+                Clear filters
               </Button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={actionFilter}
-              onValueChange={setActionFilter}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by action" />
-              </SelectTrigger>
-              <SelectContent>
-                {actionTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type === 'all' ? 'All actions' : `${type.charAt(0).toUpperCase() + type.slice(1)} events`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
-        {isLoading ? (
+        {refreshing ? (
+          <div className="flex h-60 items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em]"></div>
+              <p className="text-sm text-muted-foreground">Refreshing audit logs...</p>
+            </div>
+          </div>
+        ) : !initialLoadComplete ? (
           <div className="flex h-60 items-center justify-center">
             <div className="text-center space-y-3">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent align-[-0.125em]"></div>
@@ -336,7 +495,7 @@ export function AuditLog() {
               <p className="text-lg font-medium">No logs found</p>
               <p className="text-sm text-muted-foreground">No logs match your current filters</p>
             </div>
-            {(searchTerm || actionFilter !== 'all') && (
+            {(filters.action !== 'all' || filters.searchTerm || filters.userId || filters.timeRange !== '7days') && (
               <Button variant="outline" onClick={clearFilters}>
                 Clear filters
               </Button>
@@ -381,7 +540,7 @@ export function AuditLog() {
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="left" className="max-w-xs">
-                              <pre className="text-xs">
+                              <pre className="text-xs whitespace-pre-wrap">
                                 {JSON.stringify(log.details, null, 2)}
                               </pre>
                             </TooltipContent>
@@ -408,16 +567,12 @@ export function AuditLog() {
                     let pageNum;
                     
                     if (totalPages <= 5) {
-                      // Show all pages if 5 or fewer
                       pageNum = i + 1;
                     } else if (currentPage <= 3) {
-                      // Near the start
                       pageNum = i + 1;
                     } else if (currentPage >= totalPages - 2) {
-                      // Near the end
                       pageNum = totalPages - 4 + i;
                     } else {
-                      // In the middle
                       pageNum = currentPage - 2 + i;
                     }
                     
@@ -446,9 +601,26 @@ export function AuditLog() {
         )}
       </CardContent>
       <CardFooter className="border-t p-4 text-sm text-muted-foreground">
-        <div className="flex justify-between w-full">
+        <div className="flex flex-wrap justify-between w-full">
           <div>Showing {filteredLogs.length > 0 ? `${indexOfFirstLog + 1}-${Math.min(indexOfLastLog, filteredLogs.length)}` : '0'} of {filteredLogs.length} entries</div>
-          <div>Retention policy: 90 days</div>
+          <div className="flex items-center">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="flex items-center gap-1">
+                    <Info className="h-4 w-4" />
+                    Retention policy: 90 days
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-xs">
+                    For compliance reasons, audit logs are retained for 90 days. 
+                    Export data you need to keep for longer periods.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
       </CardFooter>
     </Card>

@@ -27,63 +27,94 @@ import NotFound from './pages/NotFound';
 // Styles
 import './App.css';
 
-// Create a client
+// Create a client with enhanced configuration for enterprise apps
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: Infinity, // Keep data fresh
-      refetchOnWindowFocus: false, // Don't refetch on focus
-      retry: 1, // Only retry once
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+      refetchOnWindowFocus: true, // Refetch on window focus for real-time updates
+      retry: 3, // Retry failed requests 3 times
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    },
+    mutations: {
+      retry: 2,
+      retryDelay: 1000,
     },
   },
 });
 
-// State persistence component
+// State persistence component with enhanced error handling
 function StatePersistence() {
   const tasks = useTaskStore(state => state.tasks);
   const addTask = useTaskStore(state => state.addTask);
   const employees = useEmployeeStore(state => state.employees);
   const addEmployee = useEmployeeStore(state => state.addEmployee);
 
-  // Save state to localStorage whenever it changes
+  // Save state to localStorage whenever it changes with error handling
   useEffect(() => {
     if (tasks.length > 0) {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
+      try {
+        localStorage.setItem('tasks', JSON.stringify(tasks));
+      } catch (error) {
+        console.error('Error saving tasks to localStorage:', error);
+        // Consider implementing a fallback storage mechanism
+      }
     }
   }, [tasks]);
 
   useEffect(() => {
     if (employees.length > 0) {
-      localStorage.setItem('employees', JSON.stringify(employees));
+      try {
+        localStorage.setItem('employees', JSON.stringify(employees));
+      } catch (error) {
+        console.error('Error saving employees to localStorage:', error);
+      }
     }
   }, [employees]);
 
-  // Load state from localStorage on initial render
+  // Load state from localStorage on initial render with enhanced validation
   useEffect(() => {
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) {
-      try {
+    try {
+      const savedTasks = localStorage.getItem('tasks');
+      if (savedTasks) {
         const parsedTasks = JSON.parse(savedTasks);
-        // Only set tasks if the store is empty
-        if (tasks.length === 0 && parsedTasks.length > 0) {
-          parsedTasks.forEach((task: any) => addTask(task));
+        // Basic validation before loading
+        if (Array.isArray(parsedTasks) && parsedTasks.length > 0) {
+          // Only set tasks if the store is empty
+          if (tasks.length === 0) {
+            parsedTasks.forEach((task: any) => {
+              // Additional validation could be added here
+              if (task && typeof task === 'object' && task.id) {
+                addTask(task);
+              }
+            });
+          }
         }
-      } catch (e) {
-        console.error('Error loading tasks from localStorage', e);
       }
+    } catch (e) {
+      console.error('Error loading tasks from localStorage', e);
     }
 
-    const savedEmployees = localStorage.getItem('employees');
-    if (savedEmployees) {
-      try {
+    try {
+      const savedEmployees = localStorage.getItem('employees');
+      if (savedEmployees) {
         const parsedEmployees = JSON.parse(savedEmployees);
-        // Only set employees if the store is empty
-        if (employees.length === 0 && parsedEmployees.length > 0) {
-          parsedEmployees.forEach((employee: any) => addEmployee(employee));
+        // Basic validation before loading
+        if (Array.isArray(parsedEmployees) && parsedEmployees.length > 0) {
+          // Only set employees if the store is empty
+          if (employees.length === 0) {
+            parsedEmployees.forEach((employee: any) => {
+              // Additional validation could be added here
+              if (employee && typeof employee === 'object' && employee.id) {
+                addEmployee(employee);
+              }
+            });
+          }
         }
-      } catch (e) {
-        console.error('Error loading employees from localStorage', e);
       }
+    } catch (e) {
+      console.error('Error loading employees from localStorage', e);
     }
   }, [addTask, addEmployee, tasks.length, employees.length]);
 
@@ -103,7 +134,7 @@ function App() {
                 {/* Public route */}
                 <Route path="/login" element={<Login />} />
                 
-                {/* Protected routes */}
+                {/* Protected routes with enhanced security */}
                 <Route path="/" element={
                   <ProtectedRoute>
                     <Index />
@@ -120,7 +151,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/employees" element={
-                  <ProtectedRoute allowedRoles={['admin', 'employee']}>
+                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
                     <Employees />
                   </ProtectedRoute>
                 } />
@@ -130,7 +161,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/reports" element={
-                  <ProtectedRoute allowedRoles={['admin', 'employee']}>
+                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
                     <Reports />
                   </ProtectedRoute>
                 } />
@@ -140,7 +171,7 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/admin" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
+                  <ProtectedRoute allowedRoles={['admin']} requireMFA={true} minSecurityLevel={2}>
                     <Admin />
                   </ProtectedRoute>
                 } />

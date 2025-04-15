@@ -1,45 +1,126 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/context/AuthContext';
+import { Shield, Clock, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
+  requireMFA?: boolean;
+  minSecurityLevel?: number;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   allowedRoles,
+  requireMFA = false,
+  minSecurityLevel = 0,
 }) => {
-  const { isAuthenticated, isLoading, user, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, user, hasRole, securityLevel = 1, mfaEnabled = false } = useAuth();
   const location = useLocation();
+  const { toast } = useToast();
+  const [showWarning, setShowWarning] = useState(false);
 
-  // Show nothing while checking authentication status
+  // Log access attempts for security audit
+  useEffect(() => {
+    if (user) {
+      console.log(`Access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
+      
+      // If security level is below recommended but they can still access
+      if (securityLevel < minSecurityLevel) {
+        setShowWarning(true);
+        toast({
+          title: "Security Recommendation",
+          description: "For enhanced security, additional verification is recommended for this section.",
+          variant: "default",
+        });
+      }
+    }
+  }, [user, location.pathname, securityLevel, minSecurityLevel, toast]);
+
+  // Show loading state
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full flex-col items-center justify-center">
         <div className="h-16 w-16 animate-spin rounded-full border-b-4 border-primary"></div>
+        <p className="mt-4 text-muted-foreground">Verifying credentials...</p>
       </div>
     );
   }
 
-  // Redirect to login if not authenticated
+  // Check authentication
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Store the location they tried to access for redirect after login
+    return <Navigate to="/login" state={{ from: location, message: "Authentication required" }} replace />;
   }
 
-  // If roles are specified, check if user has required role
+  // Check MFA requirement
+  if (requireMFA && !mfaEnabled && user) {
+    toast({
+      title: "MFA Required",
+      description: "This section requires multi-factor authentication. Please set up MFA in your security settings.",
+      variant: "destructive",
+    });
+    
+    // Redirect to MFA setup page
+    return <Navigate to="/settings?tab=security&setup=mfa" state={{ from: location }} replace />;
+  }
+
+  // Check security level
+  if (securityLevel < minSecurityLevel && minSecurityLevel > 1) {
+    toast({
+      title: "Access Restricted",
+      description: "This area requires a higher security clearance.",
+      variant: "destructive",
+    });
+    
+    return <Navigate to="/" replace />;
+  }
+
+  // Check role permissions
   if (allowedRoles && user) {
     const hasRequiredRole = allowedRoles.some(role => hasRole(role));
     
     if (!hasRequiredRole) {
+      toast({
+        title: "Permission Denied",
+        description: "You don't have the required permissions to access this area.",
+        variant: "destructive",
+      });
+      
+      // Log unauthorized access attempt to security audit
+      console.log(`Unauthorized access attempt: ${user.id} to ${location.pathname} at ${new Date().toISOString()}`);
+      
       // User is authenticated but doesn't have the required role
       return <Navigate to="/" replace />;
     }
   }
 
-  // User is authenticated and has the required role (if specified)
-  return <>{children}</>;
+  // User passes all checks
+  return (
+    <>
+      {showWarning && (
+        <div className="mb-4 rounded-md bg-amber-50 p-4 dark:bg-amber-900/20">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Security Notice</h3>
+              <div className="mt-2 text-sm text-amber-700 dark:text-amber-200">
+                <p>
+                  For enhanced security, additional verification is recommended for this section. 
+                  Visit your security settings to increase your security level.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {children}
+    </>
+  );
 };
