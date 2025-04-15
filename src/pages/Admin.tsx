@@ -29,7 +29,11 @@ export default function Admin() {
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
 
   return (
-    <ProtectedRoute allowedRoles={['admin']}>
+    <ProtectedRoute 
+      allowedRoles={['admin']} 
+      minSecurityLevel={2} 
+      suppressSecurityNotice={true}  // Add this line to suppress the security notice
+    >
       <SidebarLayout>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
