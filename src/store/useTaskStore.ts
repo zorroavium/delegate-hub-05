@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useEmployeeStore } from './useEmployeeStore';
@@ -191,6 +190,38 @@ export interface TaskActivity {
   comment?: string;
 }
 
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: string;
+  url?: string;
+  uploadedAt: string;
+  uploadedBy: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface TaskTimeEntry {
+  id: string;
+  userId: string;
+  userName: string;
+  started: string;
+  ended?: string;
+  duration?: number; // in seconds
+  description?: string;
+}
+
+export interface RecurringConfig {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
+  interval: number; // Every X days/weeks/months
+  endAfter?: number; // End after X occurrences
+  endDate?: string; // End on specific date
+  daysOfWeek?: number[]; // For weekly: 0 = Sunday, 6 = Saturday
+  dayOfMonth?: number; // For monthly
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -206,22 +237,57 @@ export interface Task {
     color?: string;
   };
   activities: TaskActivity[];
+  attachments?: TaskAttachment[];
+  timeEntries?: TaskTimeEntry[];
+  dependencies?: string[]; // Array of task IDs that this task depends on
+  isRecurring?: boolean;
+  recurringConfig?: RecurringConfig;
+  parentTaskId?: string; // For recurring instances
+  template?: boolean; // Is this task a template?
+  templateId?: string; // If created from template, the ID of the template
+  reminderSent?: boolean;
+  estimatedHours?: number;
+}
+
+export interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string;
+  tasks: Omit<Task, 'id' | 'dueDate' | 'activities' | 'assignee'>[];
 }
 
 interface TaskStore {
   tasks: Task[];
+  templates: TaskTemplate[];
   getTaskById: (id: string) => Task | undefined;
   addTask: (task: Task) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   addActivity: (taskId: string, activity: Omit<TaskActivity, 'id'>) => void;
-  syncTaskAssignees: () => void; // Added new function to sync task assignees with employee data
+  syncTaskAssignees: () => void;
+  addTaskAttachment: (taskId: string, attachment: Omit<TaskAttachment, 'id'>) => void;
+  removeTaskAttachment: (taskId: string, attachmentId: string) => void;
+  addTimeEntry: (taskId: string, entry: Omit<TaskTimeEntry, 'id'>) => void;
+  updateTimeEntry: (taskId: string, entryId: string, updates: Partial<TaskTimeEntry>) => void;
+  stopTimeEntry: (taskId: string, entryId: string) => void;
+  addTaskDependency: (taskId: string, dependsOnTaskId: string) => void;
+  removeTaskDependency: (taskId: string, dependsOnTaskId: string) => void;
+  createFromTemplate: (templateId: string, dueDate: string, assigneeId: string) => string;
+  addTemplate: (template: Omit<TaskTemplate, 'id'>) => void;
+  updateTemplate: (id: string, updates: Partial<Omit<TaskTemplate, 'id'>>) => void;
+  deleteTemplate: (id: string) => void;
+  createRecurringTasks: (task: Task) => void;
+  checkDueDateReminders: () => Task[];
+  getTaskDependencies: (taskId: string) => { dependsOn: Task[], dependedOnBy: Task[] };
+  exportTasks: () => string;
+  importTasks: (jsonData: string) => void;
 }
 
 export const useTaskStore = create<TaskStore>()(
   persist(
     (set, get) => ({
       tasks: tasksMock,
+      templates: [],
       
       getTaskById: (id: string) => {
         return get().tasks.find(task => task.id === id);
@@ -262,18 +328,15 @@ export const useTaskStore = create<TaskStore>()(
         }));
       },
       
-      // New function to sync task assignees with employee data
       syncTaskAssignees: () => {
         const employees = useEmployeeStore.getState().employees;
         
         set(state => ({
           tasks: state.tasks.map(task => {
-            // Find the employee by name (more reliable than ID in this case)
             const matchedEmployee = employees.find(emp => 
               emp.name.toLowerCase() === task.assignee.name.toLowerCase()
             );
             
-            // If we found a matching employee, update the assignee info
             if (matchedEmployee) {
               return {
                 ...task,
@@ -283,7 +346,6 @@ export const useTaskStore = create<TaskStore>()(
                   avatar: matchedEmployee.avatar,
                   color: matchedEmployee.color
                 },
-                // Also update activities to use the correct employee ID
                 activities: task.activities.map(activity => {
                   if (activity.userName.toLowerCase() === matchedEmployee.name.toLowerCase()) {
                     return {
@@ -299,6 +361,295 @@ export const useTaskStore = create<TaskStore>()(
             return task;
           })
         }));
+      },
+      
+      addTaskAttachment: (taskId: string, attachment: Omit<TaskAttachment, 'id'>) => {
+        const newAttachment = {
+          ...attachment,
+          id: Date.now().toString(),
+        };
+        
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId 
+              ? { 
+                  ...task, 
+                  attachments: [...(task.attachments || []), newAttachment] 
+                } 
+              : task
+          )
+        }));
+      },
+      
+      removeTaskAttachment: (taskId: string, attachmentId: string) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId && task.attachments
+              ? { 
+                  ...task, 
+                  attachments: task.attachments.filter(att => att.id !== attachmentId) 
+                } 
+              : task
+          )
+        }));
+      },
+      
+      addTimeEntry: (taskId: string, entry: Omit<TaskTimeEntry, 'id'>) => {
+        const newEntry = {
+          ...entry,
+          id: Date.now().toString(),
+        };
+        
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId 
+              ? { 
+                  ...task, 
+                  timeEntries: [...(task.timeEntries || []), newEntry] 
+                } 
+              : task
+          )
+        }));
+      },
+      
+      updateTimeEntry: (taskId: string, entryId: string, updates: Partial<TaskTimeEntry>) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId && task.timeEntries
+              ? { 
+                  ...task, 
+                  timeEntries: task.timeEntries.map(entry =>
+                    entry.id === entryId ? { ...entry, ...updates } : entry
+                  )
+                } 
+              : task
+          )
+        }));
+      },
+      
+      stopTimeEntry: (taskId: string, entryId: string) => {
+        const now = new Date().toISOString();
+        const task = get().tasks.find(t => t.id === taskId);
+        
+        if (task && task.timeEntries) {
+          const entry = task.timeEntries.find(e => e.id === entryId);
+          
+          if (entry && !entry.ended) {
+            const startTime = new Date(entry.started).getTime();
+            const endTime = new Date(now).getTime();
+            const duration = Math.round((endTime - startTime) / 1000); // duration in seconds
+            
+            get().updateTimeEntry(taskId, entryId, {
+              ended: now,
+              duration
+            });
+          }
+        }
+      },
+      
+      addTaskDependency: (taskId: string, dependsOnTaskId: string) => {
+        const dependsOnTask = get().getTaskById(dependsOnTaskId);
+        if (dependsOnTask?.dependencies?.includes(taskId)) {
+          console.error("Circular dependency detected");
+          return;
+        }
+        
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId
+              ? { 
+                  ...task, 
+                  dependencies: [...(task.dependencies || []), dependsOnTaskId] 
+                } 
+              : task
+          )
+        }));
+      },
+      
+      removeTaskDependency: (taskId: string, dependsOnTaskId: string) => {
+        set(state => ({
+          tasks: state.tasks.map(task => 
+            task.id === taskId && task.dependencies
+              ? { 
+                  ...task, 
+                  dependencies: task.dependencies.filter(id => id !== dependsOnTaskId) 
+                } 
+              : task
+          )
+        }));
+      },
+      
+      createFromTemplate: (templateId: string, dueDate: string, assigneeId: string) => {
+        const template = get().templates.find(t => t.id === templateId);
+        if (!template) return '';
+        
+        const employees = useEmployeeStore.getState().employees;
+        const assignee = employees.find(e => e.id === assigneeId);
+        
+        if (!assignee) return '';
+        
+        const newTaskId = crypto.randomUUID();
+        
+        const newTask: Task = {
+          id: newTaskId,
+          title: template.name,
+          description: template.description,
+          status: 'pending',
+          priority: 'medium',
+          dueDate,
+          progress: 0,
+          assignee: {
+            id: assignee.id,
+            name: assignee.name,
+            avatar: assignee.avatar,
+            color: assignee.color
+          },
+          activities: [{
+            id: Date.now().toString(),
+            userId: assignee.id,
+            userName: assignee.name,
+            userAvatar: assignee.avatar || assignee.name.split(' ').map(n => n[0]).join(''),
+            action: 'created this task from template',
+            timestamp: new Date().toISOString(),
+          }],
+          templateId
+        };
+        
+        get().addTask(newTask);
+        return newTaskId;
+      },
+      
+      addTemplate: (template: Omit<TaskTemplate, 'id'>) => {
+        const newTemplate: TaskTemplate = {
+          ...template,
+          id: crypto.randomUUID(),
+        };
+        
+        set(state => ({
+          templates: [...state.templates, newTemplate]
+        }));
+      },
+      
+      updateTemplate: (id: string, updates: Partial<Omit<TaskTemplate, 'id'>>) => {
+        set(state => ({
+          templates: state.templates.map(template => 
+            template.id === id ? { ...template, ...updates } : template
+          )
+        }));
+      },
+      
+      deleteTemplate: (id: string) => {
+        set(state => ({
+          templates: state.templates.filter(template => template.id !== id)
+        }));
+      },
+      
+      createRecurringTasks: (task: Task) => {
+        if (!task.isRecurring || !task.recurringConfig) return;
+        
+        const config = task.recurringConfig;
+        let nextDate = new Date(task.dueDate);
+        const occurrences = [];
+        const endDate = config.endDate ? new Date(config.endDate) : null;
+        
+        for (let i = 0; i < (config.endAfter || 5); i++) {
+          if (config.frequency === 'daily') {
+            nextDate = new Date(nextDate.setDate(nextDate.getDate() + config.interval));
+          } else if (config.frequency === 'weekly') {
+            nextDate = new Date(nextDate.setDate(nextDate.getDate() + (7 * config.interval)));
+          } else if (config.frequency === 'monthly') {
+            nextDate = new Date(nextDate.setMonth(nextDate.getMonth() + config.interval));
+          }
+          
+          if (endDate && nextDate > endDate) break;
+          
+          const formattedDate = nextDate.toISOString().split('T')[0];
+          
+          const newTask: Task = {
+            ...task,
+            id: crypto.randomUUID(),
+            dueDate: formattedDate,
+            parentTaskId: task.id,
+            activities: [{
+              id: Date.now().toString(),
+              userId: task.assignee.id,
+              userName: task.assignee.name,
+              userAvatar: task.assignee.avatar || '',
+              action: 'created as recurring task',
+              timestamp: new Date().toISOString(),
+            }]
+          };
+          
+          occurrences.push(newTask);
+        }
+        
+        occurrences.forEach(task => get().addTask(task));
+      },
+      
+      checkDueDateReminders: () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const reminderSettings = useStatusStore.getState().reminderSettings;
+        if (!reminderSettings.enabled) return [];
+        
+        const reminderThreshold = new Date(today);
+        reminderThreshold.setDate(today.getDate() + reminderSettings.daysBefore);
+        
+        const tasksDueSoon = get().tasks.filter(task => {
+          if (task.status === 'completed') return false;
+          if (task.reminderSent) return false;
+          
+          const dueDate = new Date(task.dueDate);
+          dueDate.setHours(0, 0, 0, 0);
+          
+          return dueDate <= reminderThreshold && dueDate >= today;
+        });
+        
+        tasksDueSoon.forEach(task => {
+          get().updateTask(task.id, { reminderSent: true });
+        });
+        
+        return tasksDueSoon;
+      },
+      
+      getTaskDependencies: (taskId: string) => {
+        const allTasks = get().tasks;
+        const currentTask = allTasks.find(t => t.id === taskId);
+        
+        if (!currentTask) return { dependsOn: [], dependedOnBy: [] };
+        
+        const dependsOn = currentTask.dependencies 
+          ? allTasks.filter(t => currentTask.dependencies?.includes(t.id))
+          : [];
+          
+        const dependedOnBy = allTasks.filter(t => 
+          t.dependencies?.includes(taskId)
+        );
+        
+        return { dependsOn, dependedOnBy };
+      },
+      
+      exportTasks: () => {
+        const data = {
+          tasks: get().tasks,
+          templates: get().templates
+        };
+        return JSON.stringify(data);
+      },
+      
+      importTasks: (jsonData: string) => {
+        try {
+          const data = JSON.parse(jsonData);
+          if (data.tasks) {
+            set({ tasks: data.tasks });
+          }
+          if (data.templates) {
+            set({ templates: data.templates });
+          }
+        } catch (error) {
+          console.error("Error importing tasks:", error);
+        }
       }
     }),
     {
@@ -307,7 +658,6 @@ export const useTaskStore = create<TaskStore>()(
       onRehydrateStorage: () => {
         return (state) => {
           if (state) {
-            // Sync task assignees with employee data after rehydration
             state.syncTaskAssignees();
           }
         };

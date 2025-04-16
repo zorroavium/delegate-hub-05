@@ -6,23 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { 
-  Calendar, 
+  Calendar as CalendarIcon, 
   CheckCircle2, 
   ChevronDown, 
-  Clock, 
   Filter, 
   Plus, 
   Search, 
-  SlidersHorizontal, 
-  AlertTriangle,
-  UserX
+  Clock,
+  Clipboard,
+  ListChecks,
+  FileText
 } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { CreateTaskDialog } from '@/components/tasks/create-task-dialog';
@@ -32,6 +25,10 @@ import { useStatusStore } from '@/store/useStatusStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { TaskList } from '@/components/tasks/task-list';
 import { TaskFilterBar } from '@/components/tasks/task-filter-bar';
+import { TaskCalendarView } from '@/components/tasks/task-calendar-view';
+import { TaskTemplates } from '@/components/tasks/task-templates';
+import { TaskExportImport } from '@/components/tasks/task-export-import';
+import { TaskReminders } from '@/components/tasks/task-reminders';
 
 const TasksPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,6 +37,7 @@ const TasksPage = () => {
   // Get the filter parameters from URL
   const initialFilter = searchParams.get('status') || 'all';
   const initialEmployee = searchParams.get('employee') || null;
+  const initialView = searchParams.get('view') || 'list';
   
   const [filter, setFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +45,7 @@ const TasksPage = () => {
   const [selectedPriority, setSelectedPriority] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(initialEmployee);
   const [showThisWeek, setShowThisWeek] = useState(false);
+  const [view, setView] = useState<'list' | 'calendar' | 'templates'>(initialView as any || 'list');
   const { toast } = useToast();
   
   // Get tasks from store
@@ -66,8 +65,11 @@ const TasksPage = () => {
     if (selectedEmployee) {
       params.set('employee', selectedEmployee);
     }
+    if (view !== 'list') {
+      params.set('view', view);
+    }
     setSearchParams(params);
-  }, [filter, selectedEmployee, setSearchParams]);
+  }, [filter, selectedEmployee, view, setSearchParams]);
   
   // Set initial filters from URL on mount
   useEffect(() => {
@@ -77,7 +79,10 @@ const TasksPage = () => {
     if (initialEmployee) {
       setSelectedEmployee(initialEmployee);
     }
-  }, [initialFilter, initialEmployee]);
+    if (initialView && ['list', 'calendar', 'templates'].includes(initialView)) {
+      setView(initialView as any);
+    }
+  }, [initialFilter, initialEmployee, initialView]);
   
   // Filter tasks based on status, priority, time frame, employee and search query
   const filteredTasks = tasks.filter(task => {
@@ -139,6 +144,11 @@ const TasksPage = () => {
       title: "Task Created",
       description: `"${newTask.title}" has been created successfully.`
     });
+    
+    // Create recurring tasks if needed
+    if (taskWithActivity.isRecurring && taskWithActivity.recurringConfig) {
+      useTaskStore.getState().createRecurringTasks(taskWithActivity);
+    }
   };
 
   // Handle filter changes
@@ -177,16 +187,45 @@ const TasksPage = () => {
               />
             </div>
             
-            <TaskFilterBar 
-              selectedPriority={selectedPriority}
-              selectedEmployee={selectedEmployee}
-              showThisWeek={showThisWeek}
-              onPriorityChange={handlePriorityFilter}
-              onEmployeeChange={handleEmployeeFilter}
-              onWeekChange={handleWeekFilter}
-              onClearFilters={clearFilters}
-              employees={employees}
-            />
+            {view === 'list' && (
+              <TaskFilterBar 
+                selectedPriority={selectedPriority}
+                selectedEmployee={selectedEmployee}
+                showThisWeek={showThisWeek}
+                onPriorityChange={handlePriorityFilter}
+                onEmployeeChange={handleEmployeeFilter}
+                onWeekChange={handleWeekFilter}
+                onClearFilters={clearFilters}
+                employees={employees}
+              />
+            )}
+            
+            <div className="flex gap-2">
+              <Button 
+                variant={view === 'list' ? 'default' : 'outline'} 
+                size="icon"
+                onClick={() => setView('list')}
+                title="List View"
+              >
+                <ListChecks size={16} />
+              </Button>
+              <Button 
+                variant={view === 'calendar' ? 'default' : 'outline'} 
+                size="icon"
+                onClick={() => setView('calendar')}
+                title="Calendar View"
+              >
+                <CalendarIcon size={16} />
+              </Button>
+              <Button 
+                variant={view === 'templates' ? 'default' : 'outline'} 
+                size="icon"
+                onClick={() => setView('templates')}
+                title="Templates"
+              >
+                <Clipboard size={16} />
+              </Button>
+            </div>
             
             <Button onClick={() => setIsCreateDialogOpen(true)}>
               <Plus size={16} className="mr-1" />
@@ -195,33 +234,51 @@ const TasksPage = () => {
           </div>
         </div>
         
-        <Tabs defaultValue={filter} value={filter} className="w-full" onValueChange={setFilter}>
-          <TabsList className="flex flex-wrap justify-start">
-            <TabsTrigger value="all">All Tasks</TabsTrigger>
+        {view === 'list' && (
+          <Tabs defaultValue={filter} value={filter} className="w-full" onValueChange={setFilter}>
+            <TabsList className="flex flex-wrap justify-start">
+              <TabsTrigger value="all">All Tasks</TabsTrigger>
+              
+              {sortedStatuses.map((status) => (
+                <TabsTrigger key={status.id} value={status.id}>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${status.color}`}></div>
+                    {status.name}
+                  </div>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            <TabsContent value="all" className="mt-6">
+              <TaskList tasks={filteredTasks} emptyMessage="No tasks found matching your criteria." />
+            </TabsContent>
             
             {sortedStatuses.map((status) => (
-              <TabsTrigger key={status.id} value={status.id}>
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${status.color}`}></div>
-                  {status.name}
-                </div>
-              </TabsTrigger>
+              <TabsContent key={status.id} value={status.id} className="mt-6">
+                <TaskList 
+                  tasks={filteredTasks} 
+                  emptyMessage={`No ${status.name.toLowerCase()} tasks found.`} 
+                />
+              </TabsContent>
             ))}
-          </TabsList>
-          
-          <TabsContent value="all" className="mt-6">
-            <TaskList tasks={filteredTasks} emptyMessage="No tasks found matching your criteria." />
-          </TabsContent>
-          
-          {sortedStatuses.map((status) => (
-            <TabsContent key={status.id} value={status.id} className="mt-6">
-              <TaskList 
-                tasks={filteredTasks} 
-                emptyMessage={`No ${status.name.toLowerCase()} tasks found.`} 
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
+          </Tabs>
+        )}
+        
+        {view === 'calendar' && (
+          <TaskCalendarView />
+        )}
+        
+        {view === 'templates' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <TaskTemplates />
+            </div>
+            <div className="space-y-6">
+              <TaskReminders />
+              <TaskExportImport />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Task Creation Dialog */}

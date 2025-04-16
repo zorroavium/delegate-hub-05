@@ -11,15 +11,26 @@ export interface StatusConfig {
 
 export type ThemeType = 'light' | 'dark' | 'system';
 
+// New interface for reminder settings
+export interface ReminderSettings {
+  enabled: boolean;
+  daysBefore: number;
+  notificationType: 'email' | 'push' | 'both';
+}
+
 interface StatusState {
   statuses: StatusConfig[];
   theme: ThemeType;
+  // New reminder settings
+  reminderSettings: ReminderSettings;
   setStatuses: (statuses: StatusConfig[]) => void;
   addStatus: (status: Omit<StatusConfig, 'id' | 'order'>) => void;
   updateStatus: (id: string, status: Partial<Omit<StatusConfig, 'id'>>) => void;
   removeStatus: (id: string) => void;
   reorderStatuses: (startIndex: number, endIndex: number) => void;
   setTheme: (theme: ThemeType) => void;
+  // New method for updating reminder settings
+  setReminderSettings: (settings: Partial<ReminderSettings>) => void;
 }
 
 // Default statuses
@@ -35,6 +46,13 @@ export const useStatusStore = create<StatusState>()(
     (set) => ({
       statuses: defaultStatuses,
       theme: 'light', // Light is the default theme
+      
+      // Default reminder settings
+      reminderSettings: {
+        enabled: true,
+        daysBefore: 1,
+        notificationType: 'both'
+      },
       
       setStatuses: (statuses: StatusConfig[]) => set({ statuses }),
       
@@ -80,6 +98,14 @@ export const useStatusStore = create<StatusState>()(
       }),
 
       setTheme: (theme) => set({ theme }),
+      
+      // Method to update reminder settings
+      setReminderSettings: (settings) => set((state) => ({
+        reminderSettings: {
+          ...state.reminderSettings,
+          ...settings
+        }
+      })),
     }),
     {
       name: 'task-status-store',

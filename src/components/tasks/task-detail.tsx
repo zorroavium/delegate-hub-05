@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { 
@@ -18,7 +17,9 @@ import {
   User,
   Send,
   Download,
-  Plus
+  Plus,
+  Repeat,
+  Link as LinkIcon
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -32,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStatusStore } from '@/store/useStatusStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button'; // Added Button import
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +41,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AttachmentUploader, AttachmentIcon } from '@/components/tasks/attachment-uploader';
+import { TimeTracker } from '@/components/tasks/time-tracker';
+import { TaskDependencies } from '@/components/tasks/task-dependencies';
+import { RecurringTaskConfig } from '@/components/tasks/recurring-task-config';
 
 interface Attachment {
   id: string;
@@ -60,7 +65,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const { toast } = useToast();
   const { statuses } = useStatusStore();
   const { employees } = useEmployeeStore();
-  const { updateTask, addActivity, deleteTask } = useTaskStore();
+  const { updateTask, addActivity, deleteTask, addTaskAttachment, removeTaskAttachment, addTimeEntry, stopTimeEntry, updateTimeEntry } = useTaskStore();
   
   const [isEditing, setIsEditing] = useState(false);
   const [task, setTask] = useState<Task>(initialTask);
@@ -69,32 +74,20 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [attachments, setAttachments] = useState<Attachment[]>([
-    {
-      id: "1",
-      name: "Project_Requirements.pdf",
-      type: "PDF",
-      size: "2.4 MB",
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: "2",
-      name: "Budget_Analysis.xlsx",
-      type: "XLS",
-      size: "1.2 MB",
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    }
-  ]);
+  const [isRecurring, setIsRecurring] = useState(!!initialTask.isRecurring);
+  const [recurringConfig, setRecurringConfig] = useState(initialTask.recurringConfig || {
+    frequency: 'weekly',
+    interval: 1,
+    endAfter: 5
+  });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Format date string
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   };
 
-  // Format timestamp for activity feed
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -113,7 +106,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     }
   };
 
-  // Get file size in human readable format
   const formatFileSize = (size: number) => {
     if (size < 1024) {
       return size + ' B';
@@ -124,7 +116,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     }
   };
 
-  // Get priority class
   const getPriorityClass = () => {
     switch (task.priority) {
       case 'high':
@@ -138,7 +129,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     }
   };
 
-  // Get status class and info
   const getStatusInfo = () => {
     const status = statuses.find(s => s.id === task.status);
     
@@ -178,7 +168,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     }
   };
 
-  // Check if task is past due date
   const isPastDue = () => {
     const dueDate = new Date(task.dueDate);
     const today = new Date();
@@ -186,37 +175,50 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   };
 
   const handleSaveEdit = () => {
-    // Update task in store
-    updateTask(task.id, editedTask);
+    const updatedTask = {
+      ...editedTask,
+      isRecurring,
+      recurringConfig: isRecurring ? recurringConfig : undefined
+    };
     
-    // Update local state
-    setTask(editedTask);
+    updateTask(task.id, updatedTask);
+    
+    setTask(updatedTask);
     setIsEditing(false);
     
-    // Add activity if status changed
-    if (task.status !== editedTask.status) {
-      const statusName = statuses.find(s => s.id === editedTask.status)?.name || editedTask.status;
+    if (task.status !== updatedTask.status) {
+      const statusName = statuses.find(s => s.id === updatedTask.status)?.name || updatedTask.status;
       const prevStatusName = statuses.find(s => s.id === task.status)?.name || task.status;
       
       addActivity(task.id, {
-        userId: '101', // Hardcoded for demo
-        userName: 'John Doe', // Hardcoded for demo
+        userId: '101',
+        userName: 'John Doe',
         userAvatar: 'JD',
         action: `changed status from ${prevStatusName.replace('-', ' ')} to ${statusName.replace('-', ' ')}`,
         timestamp: new Date().toISOString(),
       });
     }
     
-    const statusName = statuses.find(s => s.id === editedTask.status)?.name || editedTask.status;
+    if (isRecurring && !task.isRecurring) {
+      useTaskStore.getState().createRecurringTasks(updatedTask);
+    }
+    
+    const statusName = statuses.find(s => s.id === updatedTask.status)?.name || updatedTask.status;
     
     toast({
       title: "Task updated",
-      description: `The task has been updated to ${statusName} with ${editedTask.progress}% progress.`,
+      description: `The task has been updated to ${statusName} with ${updatedTask.progress}% progress.`,
     });
   };
   
   const handleCancelEdit = () => {
     setEditedTask(task);
+    setIsRecurring(!!task.isRecurring);
+    setRecurringConfig(task.recurringConfig || {
+      frequency: 'weekly',
+      interval: 1,
+      endAfter: 5
+    });
     setIsEditing(false);
   };
 
@@ -238,7 +240,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
 
   const handleStatusChange = (value: string) => {
     setEditedTask(prev => {
-      // If marking as completed, set progress to 100%
       if (value === 'completed') {
         return { ...prev, status: value, progress: 100 };
       }
@@ -249,17 +250,14 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const handleQuickComplete = () => {
     const updatedTask = { ...task, status: 'completed', progress: 100 };
     
-    // Update task in store
     updateTask(task.id, updatedTask);
     
-    // Update local state
     setTask(updatedTask);
     setEditedTask(updatedTask);
     
-    // Add activity
     addActivity(task.id, {
-      userId: '101', // Hardcoded for demo
-      userName: 'John Doe', // Hardcoded for demo
+      userId: '101',
+      userName: 'John Doe',
       userAvatar: 'JD',
       action: 'marked as completed',
       timestamp: new Date().toISOString(),
@@ -272,18 +270,15 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   };
 
   const handleRequestExtension = () => {
-    // Create a new due date 7 days from the current due date
     const currentDueDate = new Date(task.dueDate);
     const newDueDate = new Date(currentDueDate);
     newDueDate.setDate(newDueDate.getDate() + 7);
     
-    // Format the new due date as YYYY-MM-DD
     const newDueDateString = newDueDate.toISOString().split('T')[0];
     
-    // Add activity
     addActivity(task.id, {
-      userId: '101', // Hardcoded for demo
-      userName: 'John Doe', // Hardcoded for demo
+      userId: '101',
+      userName: 'John Doe',
       userAvatar: 'JD',
       action: `requested a deadline extension from ${formatDate(task.dueDate)} to ${formatDate(newDueDateString)}`,
       timestamp: new Date().toISOString(),
@@ -319,17 +314,14 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
       }
     };
     
-    // Update task in store
     updateTask(task.id, updatedTask);
     
-    // Update local state
     setTask(updatedTask);
     setEditedTask(updatedTask);
     
-    // Add activity
     addActivity(task.id, {
-      userId: '101', // Hardcoded for demo
-      userName: 'John Doe', // Hardcoded for demo
+      userId: '101',
+      userName: 'John Doe',
       userAvatar: 'JD',
       action: `reassigned the task to ${selectedEmployee.name}`,
       timestamp: new Date().toISOString(),
@@ -346,20 +338,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const handleAddComment = () => {
     if (!comment.trim()) return;
     
-    // Add activity with comment
     addActivity(task.id, {
-      userId: '101', // Hardcoded for demo
-      userName: 'John Doe', // Hardcoded for demo
+      userId: '101',
+      userName: 'John Doe',
       userAvatar: 'JD',
       action: 'added a comment',
       comment: comment,
       timestamp: new Date().toISOString(),
     });
     
-    // Clear comment field
     setComment('');
     
-    // Update task in local state to show the comment
     const updatedTask = useTaskStore.getState().getTaskById(task.id);
     if (updatedTask) {
       setTask(updatedTask);
@@ -391,54 +380,17 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     }
   };
 
-  const handleAddAttachment = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  const handleFileUpload = (attachment: Omit<TaskAttachment, 'id'>) => {
+    addTaskAttachment(task.id, attachment);
+    
+    const updatedTask = useTaskStore.getState().getTaskById(task.id);
+    if (updatedTask) {
+      setTask(updatedTask);
+      setEditedTask(updatedTask);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    // Process each file
-    Array.from(files).forEach(file => {
-      // Create a new attachment
-      const newAttachment: Attachment = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
-        size: formatFileSize(file.size),
-        date: new Date().toISOString(),
-        url: URL.createObjectURL(file),
-      };
-      
-      // Add to attachments
-      setAttachments(prev => [newAttachment, ...prev]);
-      
-      // Add activity
-      addActivity(task.id, {
-        userId: '101', // Hardcoded for demo
-        userName: 'John Doe', // Hardcoded for demo
-        userAvatar: 'JD',
-        action: `added an attachment: ${file.name}`,
-        timestamp: new Date().toISOString(),
-      });
-    });
-    
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    
-    toast({
-      title: "Attachment Added",
-      description: "Your file has been attached to the task.",
-    });
-  };
-
-  const handleDownloadAttachment = (attachment: Attachment) => {
-    // For demo purpose, we'll just show a toast
+  const handleDownloadAttachment = (attachment: any) => {
     toast({
       title: "Download Started",
       description: `Downloading ${attachment.name}`,
@@ -446,25 +398,64 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   };
 
   const handleDeleteAttachment = (attachmentId: string) => {
-    const attachment = attachments.find(a => a.id === attachmentId);
+    removeTaskAttachment(task.id, attachmentId);
     
-    if (attachment) {
-      // Remove from attachments
-      setAttachments(prev => prev.filter(a => a.id !== attachmentId));
-      
-      // Add activity
-      addActivity(task.id, {
-        userId: '101', // Hardcoded for demo
-        userName: 'John Doe', // Hardcoded for demo
-        userAvatar: 'JD',
-        action: `removed an attachment: ${attachment.name}`,
-        timestamp: new Date().toISOString(),
-      });
-      
-      toast({
-        title: "Attachment Removed",
-        description: "The attachment has been removed from the task.",
-      });
+    const updatedTask = useTaskStore.getState().getTaskById(task.id);
+    if (updatedTask) {
+      setTask(updatedTask);
+      setEditedTask(updatedTask);
+    }
+    
+    toast({
+      title: "Attachment Removed",
+      description: "The attachment has been removed from the task.",
+    });
+  };
+
+  const handleStartTimeTracking = (entry: any) => {
+    addTimeEntry(task.id, entry);
+    
+    const updatedTask = useTaskStore.getState().getTaskById(task.id);
+    if (updatedTask) {
+      setTask(updatedTask);
+      setEditedTask(updatedTask);
+    }
+  };
+  
+  const handleStopTimeTracking = (entryId: string) => {
+    stopTimeEntry(task.id, entryId);
+    
+    const updatedTask = useTaskStore.getState().getTaskById(task.id);
+    if (updatedTask) {
+      setTask(updatedTask);
+      setEditedTask(updatedTask);
+    }
+  };
+  
+  const handleDeleteTimeEntry = (entryId: string) => {
+    updateTimeEntry(task.id, entryId, { userId: 'DELETED' });
+    
+    const updatedTask = {
+      ...task,
+      timeEntries: task.timeEntries?.filter(entry => entry.id !== entryId)
+    };
+    
+    setTask(updatedTask);
+    setEditedTask(updatedTask);
+    
+    toast({
+      title: "Time Entry Deleted",
+      description: "The time entry has been removed.",
+    });
+  };
+  
+  const handleUpdateTimeEntry = (entryId: string, updates: any) => {
+    updateTimeEntry(task.id, entryId, updates);
+    
+    const updatedTask = useTaskStore.getState().getTaskById(task.id);
+    if (updatedTask) {
+      setTask(updatedTask);
+      setEditedTask(updatedTask);
     }
   };
 
@@ -472,7 +463,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
 
   return (
     <div className={cn('animate-fade-in', className)}>
-      {/* Header with back button */}
       <div className="flex items-center mb-6">
         <CustomButton 
           variant="ghost" 
@@ -528,11 +518,8 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
         </div>
       </div>
 
-      {/* Main content */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left column - Task details */}
         <div className="md:col-span-2 space-y-6">
-          {/* Task title and status */}
           <div className="glass-card p-6">
             <div className="flex justify-between items-start mb-4">
               {isEditing ? (
@@ -572,19 +559,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               </div>
             </div>
 
-            {/* Description */}
-            {isEditing ? (
-              <Textarea
-                name="description"
-                value={editedTask.description}
-                onChange={handleTaskChange}
-                className="w-full min-h-[100px] text-muted-foreground rounded-md border border-input p-3 mb-6"
-              />
-            ) : (
-              <p className="text-muted-foreground mb-6">{task.description}</p>
-            )}
+            <div className="w-full">
+              {isEditing ? (
+                <Textarea
+                  name="description"
+                  value={editedTask.description}
+                  onChange={handleTaskChange}
+                  className="w-full min-h-[100px] text-muted-foreground rounded-md border border-input p-3 mb-6"
+                />
+              ) : (
+                <p className="text-muted-foreground mb-6">{task.description}</p>
+              )}
+            </div>
 
-            {/* Due date */}
             <div className="flex items-center mb-4">
               <Calendar size={18} className="text-primary mr-2" />
               <div className="flex flex-col">
@@ -609,7 +596,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               </div>
             </div>
 
-            {/* Priority */}
             <div className="flex items-center mb-6">
               <AlertTriangle size={18} className="text-primary mr-2" />
               <div className="flex flex-col">
@@ -639,7 +625,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               </div>
             </div>
 
-            {/* Progress */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Progress</span>
@@ -658,9 +643,38 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                 <Progress value={task.progress} className="h-2" />
               )}
             </div>
+
+            {isEditing && (
+              <div className="mb-6">
+                <RecurringTaskConfig
+                  value={recurringConfig}
+                  onChange={setRecurringConfig}
+                  isEnabled={isRecurring}
+                  onToggle={setIsRecurring}
+                />
+              </div>
+            )}
+            
+            {!isEditing && task.isRecurring && (
+              <div className="flex items-center mb-6 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-md">
+                <Repeat size={18} className="text-primary mr-2" />
+                <div>
+                  <span className="text-sm font-medium">Recurring Task</span>
+                  <p className="text-xs text-muted-foreground">
+                    This task repeats 
+                    {task.recurringConfig?.frequency === 'daily' && ' daily'}
+                    {task.recurringConfig?.frequency === 'weekly' && ' weekly'}
+                    {task.recurringConfig?.frequency === 'monthly' && ' monthly'}
+                    {task.recurringConfig?.interval && task.recurringConfig.interval > 1 && 
+                      ` every ${task.recurringConfig.interval} ${task.recurringConfig?.frequency === 'daily' ? 'days' : 
+                        task.recurringConfig?.frequency === 'weekly' ? 'weeks' : 'months'}`
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          
-          {/* Activity log */}
+
           <div className="glass-card p-6">
             <h3 className="font-semibold mb-4 flex items-center">
               <MessageSquare size={16} className="mr-2" />
@@ -699,7 +713,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               )}
             </div>
             
-            {/* Add comment */}
             <div className="mt-6">
               <div className="relative">
                 <Textarea 
@@ -708,21 +721,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                 />
-                <div className="absolute right-3 bottom-3 flex space-x-2">
-                  <button 
-                    className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    onClick={handleAddAttachment}
-                  >
-                    <Paperclip size={16} />
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    onChange={handleFileChange}
-                    multiple
-                  />
-                </div>
               </div>
               <div className="flex justify-end mt-2">
                 <CustomButton 
@@ -739,9 +737,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
           </div>
         </div>
 
-        {/* Right column - Sidebar */}
         <div className="space-y-6">
-          {/* Assignee */}
           <div className="glass-card p-6">
             <h3 className="font-semibold mb-4">Assignee</h3>
             {isEditing ? (
@@ -789,8 +785,18 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               </div>
             )}
           </div>
-          
-          {/* Quick actions */}
+
+          <TaskDependencies taskId={task.id} className="glass-card" />
+
+          <TimeTracker 
+            taskId={task.id}
+            timeEntries={task.timeEntries || []}
+            onStartTracking={handleStartTimeTracking}
+            onStopTracking={handleStopTimeTracking}
+            onDeleteEntry={handleDeleteTimeEntry}
+            onUpdateEntry={handleUpdateTimeEntry}
+          />
+
           <div className="glass-card p-6">
             <h3 className="font-semibold mb-4">Actions</h3>
             <div className="space-y-3">
@@ -822,74 +828,68 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
               </CustomButton>
             </div>
           </div>
-          
-          {/* Attachments */}
+
           <div className="glass-card p-6">
             <h3 className="font-semibold mb-4 flex items-center">
               <Paperclip size={16} className="mr-2" />
-              Attachments ({attachments.length})
+              Attachments {task.attachments?.length ? `(${task.attachments.length})` : ''}
             </h3>
             
+            <AttachmentUploader 
+              onUpload={handleFileUpload}
+              className="mb-4"
+              maxSize={5}
+              acceptedFileTypes={['image', 'pdf', 'docx', 'xlsx']}
+            />
+            
             <div className="space-y-3">
-              {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center p-3 rounded-lg border border-border bg-background/40">
-                  <div className={`p-2 rounded-md mr-3 ${
-                    attachment.type === 'PDF' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
-                    attachment.type === 'XLS' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
-                    attachment.type === 'DOC' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                    'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
-                  }`}>
-                    <div className="w-6 h-6 flex items-center justify-center font-medium text-xs">{attachment.type}</div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{attachment.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {attachment.size} • {formatTimestamp(attachment.date)}
+              {task.attachments && task.attachments.length > 0 ? (
+                task.attachments.map((attachment) => (
+                  <div 
+                    key={attachment.id} 
+                    className="flex items-center p-3 rounded-lg border border-border bg-background/40"
+                  >
+                    <div className="mr-3">
+                      <AttachmentIcon type={attachment.type} />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{attachment.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {attachment.size} • {formatTimestamp(attachment.uploadedAt)}
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="ml-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                          <MoreVertical size={14} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownloadAttachment(attachment)}>
+                          <Download size={14} className="mr-2" />
+                          Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteAttachment(attachment.id)}
+                          className="text-red-500 focus:text-red-500"
+                        >
+                          <Trash size={14} className="mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="ml-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                        <MoreVertical size={14} />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleDownloadAttachment(attachment)}>
-                        <Download size={14} className="mr-2" />
-                        Download
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDeleteAttachment(attachment.id)}
-                        className="text-red-500 focus:text-red-500"
-                      >
-                        <Trash size={14} className="mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground text-sm py-2">
+                  No attachments yet
                 </div>
-              ))}
-              
-              <button 
-                className="text-sm text-primary hover:text-primary/80 flex items-center mt-2 font-medium"
-                onClick={handleAddAttachment}
-              >
-                <Plus size={14} className="mr-1" />
-                Add Attachment
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  onChange={handleFileChange}
-                  multiple
-                />
-              </button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -909,7 +909,6 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
         </DialogContent>
       </Dialog>
 
-      {/* Reassign Task Dialog */}
       <Dialog open={isReassignDialogOpen} onOpenChange={setIsReassignDialogOpen}>
         <DialogContent>
           <DialogHeader>
