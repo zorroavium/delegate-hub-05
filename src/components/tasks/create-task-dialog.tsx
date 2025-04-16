@@ -82,7 +82,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
     const assignee = selectedAssignee ? {
       id: selectedAssignee.id,
       name: selectedAssignee.name,
-      avatar: selectedAssignee.avatar
+      avatar: selectedAssignee.avatar,
+      color: selectedAssignee.color
     } : {
       id: '0',
       name: 'Unassigned',

@@ -1,107 +1,77 @@
 
-import React, { useRef, useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Paperclip, X, File, Image, FileText, Upload } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Paperclip, UploadCloud, FileText, Image, FileArchive, File, X, CheckCircle, UploadIcon } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Progress } from "@/components/ui/progress";
 import { TaskAttachment } from '@/store/useTaskStore';
 
 interface AttachmentUploaderProps {
-  onUpload: (attachment: Omit<TaskAttachment, 'id'>) => void;
+  onUpload: (file: Omit<TaskAttachment, 'id'>) => void;
   className?: string;
   maxSize?: number; // in MB
   acceptedFileTypes?: string[];
 }
 
-export function AttachmentUploader({ 
-  onUpload, 
-  className, 
-  maxSize = 10, 
-  acceptedFileTypes 
-}: AttachmentUploaderProps) {
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export const AttachmentIcon = ({ type }: { type: string }) => {
+  switch (type) {
+    case 'image/jpeg':
+    case 'image/png':
+    case 'image/gif':
+    case 'image/svg+xml':
+    case 'image':
+      return <Image size={16} className="text-blue-500" />;
+    case 'application/pdf':
+    case 'pdf':
+      return <FileText size={16} className="text-red-500" />;
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    case 'application/msword':
+    case 'docx':
+    case 'doc':
+      return <FileText size={16} className="text-blue-600" />;
+    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+    case 'application/vnd.ms-excel':
+    case 'xlsx':
+    case 'xls':
+      return <FileText size={16} className="text-green-600" />;
+    case 'application/zip':
+    case 'application/x-zip-compressed':
+    case 'zip':
+      return <FileArchive size={16} className="text-yellow-500" />;
+    default:
+      return <File size={16} className="text-gray-500" />;
+  }
+};
+
+export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
+  onUpload,
+  className,
+  maxSize = 10, // Default 10MB
+  acceptedFileTypes = ['*']
+}) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
-  const handleFileSelect = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    
-    // Check file size
-    if (file.size > maxSize * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: `The maximum file size is ${maxSize}MB`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Check file type if acceptedFileTypes is provided
-    if (acceptedFileTypes && acceptedFileTypes.length > 0) {
-      const fileType = file.type;
-      if (!acceptedFileTypes.some(type => fileType.includes(type))) {
-        toast({
-          title: "Invalid file type",
-          description: `Accepted file types: ${acceptedFileTypes.join(', ')}`,
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    
-    // Simulate upload progress
-    setIsUploading(true);
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setUploadProgress(progress);
-      
-      if (progress >= 100) {
-        clearInterval(interval);
-        setIsUploading(false);
-        
-        // Create file URL and prepare attachment object
-        const fileUrl = URL.createObjectURL(file);
-        const attachment: Omit<TaskAttachment, 'id'> = {
-          name: file.name,
-          type: file.type.split('/').pop()?.toUpperCase() || 'FILE',
-          size: formatFileSize(file.size),
-          url: fileUrl,
-          uploadedAt: new Date().toISOString(),
-          uploadedBy: {
-            id: '1', // This would be the current user's ID in a real implementation
-            name: 'Current User' // This would be the current user's name
-          }
-        };
-        
-        onUpload(attachment);
-        
-        toast({
-          title: "File uploaded",
-          description: `${file.name} has been successfully uploaded.`
-        });
-      }
-    }, 100);
-  };
-  
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
   };
   
-  const handleDragLeave = () => {
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
     setIsDragging(false);
   };
   
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    handleFileSelect(e.dataTransfer.files);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
   };
   
   const triggerFileInput = () => {
@@ -110,76 +80,142 @@ export function AttachmentUploader({
     }
   };
   
-  // Format file size helper function
-  const formatFileSize = (size: number): string => {
+  const formatFileSize = (size: number) => {
     if (size < 1024) {
-      return `${size} B`;
+      return size + ' B';
     } else if (size < 1024 * 1024) {
-      return `${(size / 1024).toFixed(1)} KB`;
+      return (size / 1024).toFixed(1) + ' KB';
     } else {
-      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+      return (size / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+  };
+  
+  const checkFileType = (file: File) => {
+    if (acceptedFileTypes.includes('*')) return true;
+    
+    const fileType = file.type;
+    return acceptedFileTypes.some(type => {
+      // Handle types like 'image', 'pdf', etc.
+      if (!type.includes('/')) {
+        return fileType.startsWith(type) || fileType.endsWith(type);
+      }
+      return fileType === type;
+    });
+  };
+  
+  const handleFile = (file: File) => {
+    // Check file size
+    if (file.size > maxSize * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: `The maximum file size is ${maxSize}MB. This file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check file type
+    if (!checkFileType(file)) {
+      toast({
+        title: "Invalid file type",
+        description: `Please upload a file of the following types: ${acceptedFileTypes.join(', ')}`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Simulate upload
+    setIsUploading(true);
+    
+    // Mock upload progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      setUploadProgress(progress);
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        
+        // Create attachment object
+        const attachment: Omit<TaskAttachment, 'id'> = {
+          name: file.name,
+          type: file.type,
+          size: formatFileSize(file.size),
+          url: URL.createObjectURL(file),
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: {
+            id: '101', // Replace with actual user ID from auth
+            name: 'John Doe' // Replace with actual user name from auth
+          }
+        };
+        
+        // Call upload function
+        onUpload(attachment);
+        
+        // Reset state
+        setIsUploading(false);
+        setUploadProgress(0);
+        
+        toast({
+          title: "File uploaded",
+          description: `${file.name} has been uploaded successfully.`
+        });
+      }
+    }, 200);
+  };
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
     }
   };
   
   return (
     <div className={className}>
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        className="hidden" 
-        onChange={(e) => handleFileSelect(e.target.files)}
-        accept={acceptedFileTypes?.join(',')}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleChange}
+        accept={acceptedFileTypes.includes('*') ? undefined : acceptedFileTypes.join(',')}
       />
       
       {isUploading ? (
-        <Card className="border-dashed">
-          <CardContent className="p-4 flex flex-col items-center">
-            <div className="w-full mb-2">
-              <Progress value={uploadProgress} className="h-2" />
-            </div>
-            <p className="text-sm text-center text-muted-foreground">
-              Uploading... {uploadProgress}%
-            </p>
-          </CardContent>
-        </Card>
+        <div className="border border-border rounded-lg p-4 bg-background flex flex-col items-center justify-center">
+          <div className="w-full mb-2">
+            <Progress value={uploadProgress} className="h-2" />
+          </div>
+          <div className="text-sm">
+            Uploading... {uploadProgress}%
+          </div>
+        </div>
       ) : (
-        <Card 
-          className={`border-dashed cursor-pointer transition-all ${isDragging ? 'border-primary bg-primary/5' : ''}`}
+        <div
+          className={`border border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+            isDragging 
+              ? 'border-primary bg-primary/5' 
+              : 'border-border hover:border-primary/50 hover:bg-accent/50'
+          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={triggerFileInput}
         >
-          <CardContent className="p-4 flex flex-col items-center">
-            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm text-center text-muted-foreground">
-              Drop files here or click to upload
-            </p>
-            <p className="text-xs text-center text-muted-foreground mt-1">
-              Maximum file size: {maxSize}MB
-            </p>
-          </CardContent>
-        </Card>
+          <div className="flex flex-col items-center gap-2">
+            <div className="p-2 rounded-full bg-primary/10">
+              <UploadCloud size={18} className="text-primary" />
+            </div>
+            <div className="text-sm font-medium">
+              Drag & drop a file or click to browse
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {acceptedFileTypes.includes('*') 
+                ? `Any file type, max ${maxSize}MB` 
+                : `Accepted file types: ${acceptedFileTypes.join(', ')}, max ${maxSize}MB`}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
-}
-
-// Helper component for displaying attachment icons
-export function AttachmentIcon({ type }: { type: string }) {
-  type = type.toLowerCase();
-  
-  if (type === 'pdf') {
-    return <FileText className="text-red-500" size={16} />;
-  } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(type)) {
-    return <Image className="text-blue-500" size={16} />;
-  } else if (['doc', 'docx', 'txt', 'rtf'].includes(type)) {
-    return <FileText className="text-blue-500" size={16} />;
-  } else if (['xls', 'xlsx', 'csv'].includes(type)) {
-    return <FileText className="text-green-500" size={16} />;
-  } else if (['ppt', 'pptx'].includes(type)) {
-    return <FileText className="text-orange-500" size={16} />;
-  } else {
-    return <File className="text-gray-500" size={16} />;
-  }
-}
+};

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { 
@@ -47,15 +46,6 @@ import { TimeTracker } from '@/components/tasks/time-tracker';
 import { TaskDependencies } from '@/components/tasks/task-dependencies';
 import { RecurringTaskConfig } from '@/components/tasks/recurring-task-config';
 
-interface Attachment {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  date: string;
-  url?: string;
-}
-
 interface TaskDetailProps {
   task: Task;
   className?: string;
@@ -77,7 +67,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [isRecurring, setIsRecurring] = useState(!!initialTask.isRecurring);
   const [recurringConfig, setRecurringConfig] = useState<RecurringConfig>(initialTask.recurringConfig || {
-    frequency: 'weekly',
+    frequency: 'daily',
     interval: 1,
     endAfter: 5
   });
@@ -216,7 +206,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
     setEditedTask(task);
     setIsRecurring(!!task.isRecurring);
     setRecurringConfig(task.recurringConfig || {
-      frequency: 'weekly',
+      frequency: 'daily',
       interval: 1,
       endAfter: 5
     });
