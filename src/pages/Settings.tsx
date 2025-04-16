@@ -30,12 +30,12 @@ import {
   Image,
   Sparkles,
   Trello,
-  GoogleChrome,
+  Chrome,
   Twitter,
   FileText,
   ToggleLeft,
   CreditCard,
-  Webhooks,
+  Webhook,
   BarChart,
   Figma,
   Database
@@ -107,7 +107,8 @@ const SettingsPage = () => {
     jira: false,
     salesforce: false,
     hubspot: false,
-    openai: false
+    openai: false,
+    chrome: false
   });
 
   const [zapierWebhook, setZapierWebhook] = useState('');
@@ -863,7 +864,7 @@ const SettingsPage = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-md bg-orange-100 flex items-center justify-center dark:bg-orange-900/50">
-                                  <Webhooks className="text-orange-600 dark:text-orange-400" />
+                                  <Webhook className="text-orange-600 dark:text-orange-400" />
                                 </div>
                                 <div>
                                   <h4 className="text-base font-medium">Zapier</h4>
