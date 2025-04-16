@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStatusStore } from '@/store/useStatusStore';
 import { useEmployeeStore } from '@/store/useEmployeeStore';
 import { useToast } from '@/hooks/use-toast';
+import { RecurringTaskConfig } from './recurring-task-config';
+import { RecurringConfig } from '@/store/useTaskStore';
 
 interface CreateTaskDialogProps {
   open: boolean;
@@ -33,6 +35,14 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   const [status, setStatus] = useState('pending');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState('unassigned');
+  
+  // Recurring task state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringConfig, setRecurringConfig] = useState<RecurringConfig>({
+    frequency: 'daily',
+    interval: 1,
+    endAfter: 5
+  });
 
   // Set initial due date if provided
   useEffect(() => {
@@ -48,6 +58,12 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
     setStatus('pending');
     setDueDate('');
     setAssigneeId('unassigned');
+    setIsRecurring(false);
+    setRecurringConfig({
+      frequency: 'daily',
+      interval: 1,
+      endAfter: 5
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,7 +97,9 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
       status,
       dueDate: dueDate || new Date().toISOString().split('T')[0],
       progress: 0,
-      assignee
+      assignee,
+      isRecurring,
+      recurringConfig: isRecurring ? recurringConfig : undefined
     };
     
     onTaskCreated(newTask);
@@ -185,6 +203,14 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
               </Select>
             </div>
           </div>
+          
+          {/* Recurring Task Configuration */}
+          <RecurringTaskConfig
+            value={recurringConfig}
+            onChange={setRecurringConfig}
+            isEnabled={isRecurring}
+            onToggle={setIsRecurring}
+          />
           
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

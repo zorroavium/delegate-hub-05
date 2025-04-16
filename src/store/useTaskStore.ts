@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useEmployeeStore } from './useEmployeeStore';
@@ -591,7 +592,8 @@ export const useTaskStore = create<TaskStore>()(
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        const reminderSettings = useStatusStore.getState().reminderSettings;
+        const statusStore = useStatusStore.getState();
+        const reminderSettings = statusStore.reminderSettings;
         if (!reminderSettings.enabled) return [];
         
         const reminderThreshold = new Date(today);
