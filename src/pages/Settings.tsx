@@ -46,6 +46,7 @@ import { EmployeeManagement } from '@/components/settings/employee-management';
 import { ThemeSettings } from '@/components/settings/theme-settings';
 import { z } from 'zod';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/context/AuthContext';
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -64,10 +65,12 @@ const passwordSchema = z.object({
 });
 
 const SettingsPage = () => {
+  const { user } = useAuth();
+  
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    role: 'manager',
+    name: '',
+    email: '',
+    role: 'employee',
     department: 'operations'
   });
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
@@ -78,6 +81,18 @@ const SettingsPage = () => {
     confirmPassword: ''
   });
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+
+  // Initialize profile data with user information from AuthContext
+  useEffect(() => {
+    if (user) {
+      setProfileData(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        role: (user.role as string) || prev.role,
+      }));
+    }
+  }, [user]);
 
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -248,7 +263,8 @@ const SettingsPage = () => {
       jira: 'Jira',
       salesforce: 'Salesforce',
       hubspot: 'HubSpot',
-      openai: 'OpenAI'
+      openai: 'OpenAI',
+      chrome: 'Chrome'
     };
     
     toast({
@@ -278,9 +294,12 @@ const SettingsPage = () => {
   };
 
   useEffect(() => {
-    const savedProfileData = localStorage.getItem('profileData');
-    if (savedProfileData) {
-      setProfileData(JSON.parse(savedProfileData));
+    // Load saved settings from localStorage, but only if we don't have user data
+    if (!user) {
+      const savedProfileData = localStorage.getItem('profileData');
+      if (savedProfileData) {
+        setProfileData(JSON.parse(savedProfileData));
+      }
     }
     
     const savedNotificationSettings = localStorage.getItem('notificationSettings');
@@ -299,7 +318,7 @@ const SettingsPage = () => {
     if (savedIntegrations) {
       setIntegrations(JSON.parse(savedIntegrations));
     }
-  }, []);
+  }, [user]);
 
   return (
     <ProtectedRoute suppressSecurityNotice={true}>
@@ -388,6 +407,7 @@ const SettingsPage = () => {
                               <SelectItem value="manager">Manager</SelectItem>
                               <SelectItem value="employee">Employee</SelectItem>
                               <SelectItem value="admin">Administrator</SelectItem>
+                              <SelectItem value="client">Client</SelectItem>
                             </SelectContent>
                           </Select>
                           {profileErrors.role && <p className="text-red-500 text-xs mt-1">{profileErrors.role}</p>}
@@ -830,157 +850,4 @@ const SettingsPage = () => {
                                 <p className="text-sm text-muted-foreground">Connect leads and contacts to tasks</p>
                               </div>
                             </div>
-                            <Button 
-                              variant={integrations.hubspot ? "default" : "outline"}
-                              onClick={() => handleConnectIntegration('hubspot')}
-                            >
-                              {integrations.hubspot ? 'Disconnect' : 'Connect'}
-                            </Button>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
-                                <BarChart className="text-blue-600 dark:text-blue-400" />
-                              </div>
-                              <div>
-                                <h4 className="text-base font-medium">Salesforce</h4>
-                                <p className="text-sm text-muted-foreground">Link opportunities with your tasks</p>
-                              </div>
-                            </div>
-                            <Button 
-                              variant={integrations.salesforce ? "default" : "outline"}
-                              onClick={() => handleConnectIntegration('salesforce')}
-                            >
-                              {integrations.salesforce ? 'Disconnect' : 'Connect'}
-                            </Button>
-                          </div>
-                        </div>
-                      </TabsContent>
-                      
-                      <TabsContent value="ai" className="space-y-6">
-                        <div className="grid gap-6">
-                          <div className="flex flex-col space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-md bg-orange-100 flex items-center justify-center dark:bg-orange-900/50">
-                                  <Webhook className="text-orange-600 dark:text-orange-400" />
-                                </div>
-                                <div>
-                                  <h4 className="text-base font-medium">Zapier</h4>
-                                  <p className="text-sm text-muted-foreground">Automate workflows with Zapier</p>
-                                </div>
-                              </div>
-                              <Button 
-                                variant={integrations.zapier ? "default" : "outline"}
-                                onClick={() => handleConnectIntegration('zapier')}
-                              >
-                                {integrations.zapier ? 'Disconnect' : 'Connect'}
-                              </Button>
-                            </div>
-                            {integrations.zapier && (
-                              <div className="ml-16 space-y-2">
-                                <Label htmlFor="zapier-webhook">Zapier Webhook URL</Label>
-                                <div className="flex space-x-2">
-                                  <Input 
-                                    id="zapier-webhook" 
-                                    placeholder="https://hooks.zapier.com/..." 
-                                    value={zapierWebhook}
-                                    onChange={(e) => setZapierWebhook(e.target.value)}
-                                  />
-                                  <Button onClick={() => saveApiKey('zapier')}>Save</Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="flex flex-col space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
-                                  <CreditCard className="text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <div>
-                                  <h4 className="text-base font-medium">Stripe</h4>
-                                  <p className="text-sm text-muted-foreground">Track payments and subscriptions</p>
-                                </div>
-                              </div>
-                              <Button 
-                                variant={integrations.stripe ? "default" : "outline"}
-                                onClick={() => handleConnectIntegration('stripe')}
-                              >
-                                {integrations.stripe ? 'Disconnect' : 'Connect'}
-                              </Button>
-                            </div>
-                            {integrations.stripe && (
-                              <div className="ml-16 space-y-2">
-                                <Label htmlFor="stripe-key">Stripe Public Key</Label>
-                                <div className="flex space-x-2">
-                                  <Input 
-                                    id="stripe-key" 
-                                    placeholder="pk_..." 
-                                    value={stripePublicKey}
-                                    onChange={(e) => setStripePublicKey(e.target.value)}
-                                  />
-                                  <Button onClick={() => saveApiKey('stripe')}>Save</Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="flex flex-col space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-md bg-green-100 flex items-center justify-center dark:bg-green-900/50">
-                                  <Sparkles className="text-green-600 dark:text-green-400" />
-                                </div>
-                                <div>
-                                  <h4 className="text-base font-medium">OpenAI</h4>
-                                  <p className="text-sm text-muted-foreground">Generate content and summaries</p>
-                                </div>
-                              </div>
-                              <Button 
-                                variant={integrations.openai ? "default" : "outline"}
-                                onClick={() => handleConnectIntegration('openai')}
-                              >
-                                {integrations.openai ? 'Disconnect' : 'Connect'}
-                              </Button>
-                            </div>
-                            {integrations.openai && (
-                              <div className="ml-16 space-y-2">
-                                <Label htmlFor="openai-key">OpenAI API Key</Label>
-                                <div className="flex space-x-2">
-                                  <Input 
-                                    id="openai-key" 
-                                    placeholder="sk-..." 
-                                    type="password"
-                                    value={openaiKey}
-                                    onChange={(e) => setOpenaiKey(e.target.value)}
-                                  />
-                                  <Button onClick={() => saveApiKey('openai')}>Save</Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                  <CardFooter className="flex justify-between border-t pt-5">
-                    <div className="text-sm text-muted-foreground">
-                      <p>Need help setting up integrations?</p>
-                      <a href="#" className="text-primary hover:underline">View the documentation</a>
-                    </div>
-                    <Button variant="outline">Check for Updates</Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
-      </SidebarLayout>
-    </ProtectedRoute>
-  );
-};
-
-export default SettingsPage;
+                            <Button

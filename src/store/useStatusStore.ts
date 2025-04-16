@@ -34,7 +34,7 @@ export const useStatusStore = create<StatusState>()(
   persist(
     (set) => ({
       statuses: defaultStatuses,
-      theme: 'light', // Changed from 'system' to 'light' as default
+      theme: 'light', // Light is the default theme
       
       setStatuses: (statuses: StatusConfig[]) => set({ statuses }),
       
