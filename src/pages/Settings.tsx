@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { ProtectedRoute } from '@/components/auth/protected-route';
@@ -850,4 +851,117 @@ const SettingsPage = () => {
                                 <p className="text-sm text-muted-foreground">Connect leads and contacts to tasks</p>
                               </div>
                             </div>
-                            <Button
+                            <Button 
+                              variant={integrations.twitter ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('hubspot')}
+                            >
+                              {integrations.hubspot ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="ai" className="space-y-6">
+                        <div className="grid gap-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
+                                <Sparkles className="text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">OpenAI</h4>
+                                <p className="text-sm text-muted-foreground">Use AI to generate task descriptions</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.openai ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('openai')}
+                            >
+                              {integrations.openai ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          {integrations.openai && (
+                            <div className="px-4 py-3 bg-muted rounded-md">
+                              <Label htmlFor="openai-key" className="mb-2 block">OpenAI API Key</Label>
+                              <div className="flex gap-2">
+                                <Input 
+                                  id="openai-key" 
+                                  type="password" 
+                                  value={openaiKey} 
+                                  onChange={(e) => setOpenaiKey(e.target.value)}
+                                  placeholder="sk-..." 
+                                  className="flex-1"
+                                />
+                                <Button onClick={() => saveApiKey('openai')}>Save</Button>
+                              </div>
+                              <p className="text-xs mt-2 text-muted-foreground">Your API key is stored securely and never shared.</p>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                                <Webhook className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Zapier</h4>
+                                <p className="text-sm text-muted-foreground">Automate tasks with Zapier workflows</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.zapier ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('zapier')}
+                            >
+                              {integrations.zapier ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          {integrations.zapier && (
+                            <div className="px-4 py-3 bg-muted rounded-md">
+                              <Label htmlFor="zapier-webhook" className="mb-2 block">Zapier Webhook URL</Label>
+                              <div className="flex gap-2">
+                                <Input 
+                                  id="zapier-webhook" 
+                                  value={zapierWebhook} 
+                                  onChange={(e) => setZapierWebhook(e.target.value)}
+                                  placeholder="https://hooks.zapier.com/..." 
+                                  className="flex-1"
+                                />
+                                <Button onClick={() => saveApiKey('zapier')}>Save</Button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center dark:bg-gray-800/50">
+                                <Chrome className="text-gray-800 dark:text-gray-300" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Chrome Extension</h4>
+                                <p className="text-sm text-muted-foreground">Capture tasks from any webpage</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.chrome ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('chrome')}
+                            >
+                              {integrations.chrome ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      </SidebarLayout>
+    </ProtectedRoute>
+  );
+};
+
+export default SettingsPage;
