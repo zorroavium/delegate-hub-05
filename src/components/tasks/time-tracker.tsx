@@ -1,20 +1,28 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { PlayCircle, StopCircle, Clock, Plus, Trash2, Edit2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Play, 
+  Pause, 
+  Clock, 
+  CalendarClock, 
+  Trash2, 
+  MoreVertical,
+  Edit,
+  Save
+} from 'lucide-react';
+import { format, formatDistance, formatDistanceToNow } from 'date-fns';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { TaskTimeEntry } from '@/store/useTaskStore';
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { formatDistanceStrict } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface TimeTrackerProps {
   taskId: string;
@@ -23,395 +31,317 @@ interface TimeTrackerProps {
   onStopTracking: (entryId: string) => void;
   onDeleteEntry: (entryId: string) => void;
   onUpdateEntry: (entryId: string, updates: Partial<TaskTimeEntry>) => void;
-  className?: string;
 }
 
-export function TimeTracker({ 
-  taskId, 
-  timeEntries, 
-  onStartTracking, 
-  onStopTracking, 
+export const TimeTracker: React.FC<TimeTrackerProps> = ({
+  taskId,
+  timeEntries,
+  onStartTracking,
+  onStopTracking,
   onDeleteEntry,
-  onUpdateEntry,
-  className 
-}: TimeTrackerProps) {
-  const [activeEntry, setActiveEntry] = useState<TaskTimeEntry | null>(null);
-  const [elapsed, setElapsed] = useState<string>('00:00:00');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editEntryId, setEditEntryId] = useState<string | null>(null);
-  const [newEntry, setNewEntry] = useState({
-    hours: 0,
-    minutes: 0,
-    description: ''
-  });
+  onUpdateEntry
+}) => {
+  const { toast } = useToast();
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [elapsedTime, setElapsedTime] = useState<number>(0);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [description, setDescription] = useState('');
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState('');
   
-  // Find any active entry (no end time)
+  // Find if there's an active time entry when component loads
   useEffect(() => {
-    const active = timeEntries.find(entry => !entry.ended);
-    setActiveEntry(active || null);
+    const activeEntry = timeEntries.find(entry => !entry.ended);
+    if (activeEntry) {
+      setActiveEntryId(activeEntry.id);
+    } else {
+      setActiveEntryId(null);
+    }
   }, [timeEntries]);
   
   // Update elapsed time for active entry
   useEffect(() => {
-    if (!activeEntry) {
-      setElapsed('00:00:00');
+    if (!activeEntryId) {
+      setElapsedTime(0);
       return;
     }
     
-    const startTime = new Date(activeEntry.started).getTime();
+    const activeEntry = timeEntries.find(entry => entry.id === activeEntryId);
+    if (!activeEntry) return;
     
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const elapsed = now - startTime;
-      
-      const hours = Math.floor(elapsed / (1000 * 60 * 60));
-      const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
-      
-      setElapsed(
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      );
+    const intervalId = setInterval(() => {
+      const startTime = new Date(activeEntry.started).getTime();
+      const currentTime = new Date().getTime();
+      const elapsed = Math.floor((currentTime - startTime) / 1000);
+      setElapsedTime(elapsed);
     }, 1000);
     
-    return () => clearInterval(interval);
-  }, [activeEntry]);
+    return () => clearInterval(intervalId);
+  }, [activeEntryId, timeEntries]);
   
   const handleStartTracking = () => {
-    const entry: Omit<TaskTimeEntry, 'id'> = {
-      userId: '1', // This would be the current user's ID in a real implementation
-      userName: 'Current User', // This would be the current user's name
+    const newEntry = {
+      userId: '101', // This would come from the current user in a real app
+      userName: 'John Doe', // This would come from the current user in a real app
       started: new Date().toISOString(),
-      description: ''
+      description: description || undefined
     };
     
-    onStartTracking(entry);
+    onStartTracking(newEntry);
+    setDescription('');
+    setIsDescriptionOpen(false);
+    
+    toast({
+      title: "Time tracking started",
+      description: "The timer has started for this task."
+    });
   };
   
   const handleStopTracking = () => {
-    if (activeEntry) {
-      onStopTracking(activeEntry.id);
+    if (activeEntryId) {
+      onStopTracking(activeEntryId);
+      
+      toast({
+        title: "Time tracking stopped",
+        description: "Your time has been recorded for this task."
+      });
     }
-  };
-  
-  const handleAddManualEntry = () => {
-    const { hours, minutes, description } = newEntry;
-    
-    // Calculate duration in seconds
-    const duration = (hours * 60 * 60) + (minutes * 60);
-    
-    // Create end time based on start time + duration
-    const started = new Date().toISOString();
-    const endDate = new Date(new Date(started).getTime() + (duration * 1000));
-    
-    const entry: Omit<TaskTimeEntry, 'id'> = {
-      userId: '1', // This would be the current user's ID
-      userName: 'Current User', // This would be the current user's name
-      started,
-      ended: endDate.toISOString(),
-      duration,
-      description
-    };
-    
-    onStartTracking(entry);
-    
-    // Reset form and close dialog
-    setNewEntry({ hours: 0, minutes: 0, description: '' });
-    setIsAddDialogOpen(false);
   };
   
   const handleEditEntry = (entry: TaskTimeEntry) => {
-    setEditEntryId(entry.id);
-    
-    // Calculate hours and minutes from duration
-    let hours = 0;
-    let minutes = 0;
-    
-    if (entry.duration) {
-      hours = Math.floor(entry.duration / 3600);
-      minutes = Math.floor((entry.duration % 3600) / 60);
-    } else if (entry.started && entry.ended) {
-      const start = new Date(entry.started).getTime();
-      const end = new Date(entry.ended).getTime();
-      const durationMs = end - start;
-      hours = Math.floor(durationMs / (1000 * 60 * 60));
-      minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-    }
-    
-    setNewEntry({
-      hours,
-      minutes,
-      description: entry.description || ''
-    });
-    
-    setIsEditDialogOpen(true);
+    setEditingEntryId(entry.id);
+    setEditDescription(entry.description || '');
   };
   
-  const handleUpdateEntry = () => {
-    if (!editEntryId) return;
+  const handleSaveEdit = () => {
+    if (!editingEntryId) return;
     
-    const { hours, minutes, description } = newEntry;
-    
-    // Calculate duration in seconds
-    const duration = (hours * 60 * 60) + (minutes * 60);
-    
-    // Find original entry to get started time
-    const entry = timeEntries.find(e => e.id === editEntryId);
-    if (!entry) return;
-    
-    // Create end time based on start time + duration
-    const started = entry.started;
-    const endDate = new Date(new Date(started).getTime() + (duration * 1000));
-    
-    onUpdateEntry(editEntryId, {
-      ended: endDate.toISOString(),
-      duration,
-      description
+    onUpdateEntry(editingEntryId, {
+      description: editDescription
     });
     
-    // Reset form and close dialog
-    setNewEntry({ hours: 0, minutes: 0, description: '' });
-    setIsEditDialogOpen(false);
-    setEditEntryId(null);
+    setEditingEntryId(null);
+    setEditDescription('');
+    
+    toast({
+      title: "Time entry updated",
+      description: "Your time entry has been updated."
+    });
   };
   
-  const formatDuration = (seconds?: number): string => {
-    if (!seconds) return '00:00';
+  const getTotalTime = () => {
+    if (!timeEntries.length) return '0h 0m';
     
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const totalSeconds = timeEntries.reduce((total, entry) => {
+      if (entry.duration) {
+        return total + entry.duration;
+      } else if (entry.ended) {
+        const start = new Date(entry.started).getTime();
+        const end = new Date(entry.ended).getTime();
+        return total + Math.floor((end - start) / 1000);
+      } else {
+        return total;
+      }
+    }, 0);
+    
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
     
     return `${hours}h ${minutes}m`;
   };
   
-  // Get total time spent on task
-  const totalTimeSpent = timeEntries.reduce((total, entry) => {
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${remainingSeconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
+  };
+  
+  const formatEntryDuration = (entry: TaskTimeEntry): string => {
     if (entry.duration) {
-      return total + entry.duration;
-    } else if (entry.started && entry.ended) {
+      return formatDuration(entry.duration);
+    } else if (entry.ended) {
       const start = new Date(entry.started).getTime();
       const end = new Date(entry.ended).getTime();
-      return total + ((end - start) / 1000);
+      const durationSeconds = Math.floor((end - start) / 1000);
+      return formatDuration(durationSeconds);
+    } else {
+      return 'In progress';
     }
-    return total;
-  }, 0);
+  };
   
   return (
-    <div className={className}>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center justify-between">
-            <div className="flex items-center">
-              <Clock className="mr-2 h-5 w-5" />
-              Time Tracking
-            </div>
-            {!activeEntry && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setIsAddDialogOpen(true)}
-                className="h-8 px-2"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Track time spent on this task
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-2">
-          {activeEntry ? (
-            <div className="bg-muted/50 p-3 rounded-md">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium">Currently tracking</p>
-                  <p className="text-2xl font-bold tracking-tighter mt-1">{elapsed}</p>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Time Tracking
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {activeEntryId ? (
+            <div className="flex flex-col gap-2">
+              <div className="text-center">
+                <div className="text-2xl font-mono">{formatDuration(elapsedTime)}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Started {formatDistanceToNow(new Date(timeEntries.find(e => e.id === activeEntryId)!.started), { addSuffix: true })}
                 </div>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleStopTracking}
-                  className="gap-1"
-                >
-                  <StopCircle className="h-4 w-4" />
-                  Stop
-                </Button>
               </div>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="w-full flex items-center gap-2" 
+                onClick={handleStopTracking}
+              >
+                <Pause className="h-4 w-4" />
+                Stop Timer
+              </Button>
             </div>
           ) : (
-            <Button 
-              variant="outline" 
-              className="w-full gap-1"
-              onClick={handleStartTracking}
-            >
-              <PlayCircle className="h-4 w-4" />
-              Start Tracking
-            </Button>
+            <div className="space-y-2">
+              {isDescriptionOpen ? (
+                <div className="space-y-2">
+                  <Textarea 
+                    placeholder="Add a description for this time entry (optional)"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="text-sm resize-none"
+                    rows={2}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setIsDescriptionOpen(false);
+                        setDescription('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleStartTracking}>
+                      Start Timer
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="w-full flex items-center gap-2" 
+                  onClick={() => setIsDescriptionOpen(true)}
+                >
+                  <Play className="h-4 w-4" />
+                  Start Timer
+                </Button>
+              )}
+              
+              {timeEntries.length > 0 && (
+                <div className="text-center text-sm text-muted-foreground">
+                  Total time: {getTotalTime()}
+                </div>
+              )}
+            </div>
           )}
           
           {timeEntries.length > 0 && (
             <div className="mt-4">
-              <h4 className="text-sm font-medium mb-2">Time Entries</h4>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {timeEntries
-                  .filter(entry => entry.ended) // Only show completed entries
-                  .sort((a, b) => new Date(b.started).getTime() - new Date(a.started).getTime()) // Sort by date descending
-                  .map(entry => (
-                    <div 
-                      key={entry.id} 
-                      className="flex justify-between items-center p-2 bg-muted/30 rounded-md text-sm"
-                    >
-                      <div>
-                        <div className="font-medium">{formatDuration(entry.duration)}</div>
-                        <div className="text-muted-foreground text-xs">
-                          {new Date(entry.started).toLocaleDateString()} • {entry.userName}
+              <h4 className="text-sm font-medium mb-2">Time Log</h4>
+              <div className="space-y-2">
+                {timeEntries.map(entry => (
+                  <div 
+                    key={entry.id}
+                    className={`p-2 border rounded-md ${entry.id === activeEntryId ? 'border-primary bg-primary/5' : ''}`}
+                  >
+                    {editingEntryId === entry.id ? (
+                      <div className="space-y-2">
+                        <Textarea 
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="text-sm resize-none"
+                          rows={2}
+                        />
+                        <div className="flex justify-end">
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setEditingEntryId(null);
+                              setEditDescription('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            size="sm"
+                            className="h-7 text-xs ml-2"
+                            onClick={handleSaveEdit}
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-start">
+                          <div className="text-sm font-medium">
+                            {format(new Date(entry.started), 'MMM d, yyyy')}
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditEntry(entry)}>
+                                <Edit className="h-3.5 w-3.5 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => onDeleteEntry(entry.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-muted-foreground mt-1">
+                          <div className="flex items-center gap-1">
+                            <CalendarClock className="h-3 w-3" />
+                            <span>
+                              {format(new Date(entry.started), 'h:mm a')}
+                              {entry.ended ? ` - ${format(new Date(entry.ended), 'h:mm a')}` : ''}
+                            </span>
+                          </div>
+                          <div className={entry.id === activeEntryId ? 'text-primary font-medium' : ''}>
+                            {formatEntryDuration(entry)}
+                          </div>
                         </div>
                         {entry.description && (
-                          <div className="text-xs mt-1 line-clamp-1">
+                          <div className="mt-2 text-xs bg-muted/50 p-2 rounded-md">
                             {entry.description}
                           </div>
                         )}
-                      </div>
-                      <div className="flex space-x-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6" 
-                          onClick={() => handleEditEntry(entry)}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-destructive" 
-                          onClick={() => onDeleteEntry(entry.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
-        </CardContent>
-        <CardFooter className="pt-2">
-          <div className="w-full flex justify-between items-center text-sm">
-            <span className="text-muted-foreground">Total time:</span>
-            <span className="font-medium">{formatDuration(totalTimeSpent)}</span>
-          </div>
-        </CardFooter>
-      </Card>
-      
-      {/* Dialog for manually adding time entry */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Time Entry</DialogTitle>
-            <DialogDescription>
-              Manually add time spent on this task.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Hours</label>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  value={newEntry.hours} 
-                  onChange={(e) => setNewEntry({...newEntry, hours: parseInt(e.target.value) || 0})}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Minutes</label>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  max="59" 
-                  value={newEntry.minutes} 
-                  onChange={(e) => setNewEntry({...newEntry, minutes: parseInt(e.target.value) || 0})}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Description (optional)</label>
-              <Textarea 
-                value={newEntry.description}
-                onChange={(e) => setNewEntry({...newEntry, description: e.target.value})}
-                rows={3}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddManualEntry}>
-              Add Entry
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Dialog for editing time entry */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Time Entry</DialogTitle>
-            <DialogDescription>
-              Modify the time entry details.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Hours</label>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  value={newEntry.hours} 
-                  onChange={(e) => setNewEntry({...newEntry, hours: parseInt(e.target.value) || 0})}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Minutes</label>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  max="59" 
-                  value={newEntry.minutes} 
-                  onChange={(e) => setNewEntry({...newEntry, minutes: parseInt(e.target.value) || 0})}
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Description (optional)</label>
-              <Textarea 
-                value={newEntry.description}
-                onChange={(e) => setNewEntry({...newEntry, description: e.target.value})}
-                rows={3}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateEntry}>
-              Update Entry
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};

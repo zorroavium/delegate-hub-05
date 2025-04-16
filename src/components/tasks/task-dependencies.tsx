@@ -1,20 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { X, Plus, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
-import { Task, useTaskStore } from '@/store/useTaskStore';
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useTaskStore, Task } from '@/store/useTaskStore';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2, XCircle, Link as LinkIcon, AlertTriangle, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 interface TaskDependenciesProps {
@@ -22,70 +14,68 @@ interface TaskDependenciesProps {
   className?: string;
 }
 
-export function TaskDependencies({ taskId, className }: TaskDependenciesProps) {
+export const TaskDependencies: React.FC<TaskDependenciesProps> = ({ taskId, className }) => {
+  const { tasks, addTaskDependency, removeTaskDependency, getTaskDependencies } = useTaskStore();
   const { toast } = useToast();
-  const { tasks, getTaskById, addTaskDependency, removeTaskDependency, getTaskDependencies } = useTaskStore();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dependencies, setDependencies] = useState<{ dependsOn: Task[], dependedOnBy: Task[] }>({ dependsOn: [], dependedOnBy: [] });
   
-  // Load dependencies when taskId changes
+  const [dependencies, setDependencies] = useState<{ dependsOn: Task[], dependedOnBy: Task[] }>({
+    dependsOn: [],
+    dependedOnBy: []
+  });
+  
+  const [isAddDependencyOpen, setIsAddDependencyOpen] = useState(false);
+  const [selectedDependencyId, setSelectedDependencyId] = useState<string>('');
+  
   useEffect(() => {
-    if (taskId) {
-      const deps = getTaskDependencies(taskId);
-      setDependencies(deps);
-    }
-  }, [taskId, getTaskDependencies, tasks]);
+    const deps = getTaskDependencies(taskId);
+    setDependencies(deps);
+  }, [taskId, getTaskDependencies]);
   
-  const handleAddDependency = (dependencyId: string) => {
-    // Check if this would create a circular dependency
-    const dependencyTask = getTaskById(dependencyId);
-    if (!dependencyTask) return;
-    
-    // If the dependency already depends on the current task (directly or indirectly),
-    // adding this dependency would create a circular dependency
-    const depDeps = getTaskDependencies(dependencyId);
-    if (depDeps.dependsOn.some(t => t.id === taskId)) {
+  const handleAddDependency = () => {
+    if (!selectedDependencyId) {
       toast({
-        title: "Cannot add dependency",
-        description: "This would create a circular dependency.",
+        title: "Error",
+        description: "Please select a task",
         variant: "destructive"
       });
       return;
     }
     
-    // Add the dependency
-    addTaskDependency(taskId, dependencyId);
-    setIsAddDialogOpen(false);
-    setSearchQuery('');
+    addTaskDependency(taskId, selectedDependencyId);
+    setIsAddDependencyOpen(false);
+    setSelectedDependencyId('');
+    
+    // Update dependencies
+    const deps = getTaskDependencies(taskId);
+    setDependencies(deps);
     
     toast({
       title: "Dependency added",
-      description: `Task now depends on "${dependencyTask.title}"`,
+      description: "Task dependency has been added successfully."
     });
   };
   
-  const handleRemoveDependency = (dependencyId: string) => {
-    const dependencyTask = getTaskById(dependencyId);
-    if (!dependencyTask) return;
+  const handleRemoveDependency = (dependsOnTaskId: string) => {
+    removeTaskDependency(taskId, dependsOnTaskId);
     
-    removeTaskDependency(taskId, dependencyId);
+    // Update dependencies
+    const deps = getTaskDependencies(taskId);
+    setDependencies(deps);
     
     toast({
       title: "Dependency removed",
-      description: `Task no longer depends on "${dependencyTask.title}"`,
+      description: "Task dependency has been removed successfully."
     });
   };
   
-  // Filter tasks for the search dialog
-  const filteredTasks = tasks.filter(task => 
-    task.id !== taskId && // Don't show the current task
-    !dependencies.dependsOn.some(t => t.id === task.id) && // Don't show tasks that are already dependencies
-    (
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  // Get available tasks for dependencies (exclude the current task and any tasks that would create circular dependencies)
+  const getAvailableDependencyTasks = () => {
+    return tasks.filter(task => 
+      task.id !== taskId && 
+      !dependencies.dependsOn.some(dep => dep.id === task.id) &&
+      !dependencies.dependedOnBy.some(dep => dep.id === task.id)
+    );
+  };
   
   const getStatusClass = (status: string) => {
     switch (status) {
@@ -103,144 +93,143 @@ export function TaskDependencies({ taskId, className }: TaskDependenciesProps) {
   };
   
   return (
-    <div className={className}>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center justify-between">
-            <div>Dependencies</div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="h-8 px-2"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <LinkIcon size={16} />
+            Dependencies
           </CardTitle>
-          <CardDescription>
-            Tasks that need to be completed first
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {dependencies.dependsOn.length > 0 ? (
-            <div className="space-y-2">
-              {dependencies.dependsOn.map(dep => (
-                <div 
-                  key={dep.id}
-                  className="flex items-center justify-between p-2 bg-muted/30 rounded-md"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className={getStatusClass(dep.status)}>
-                        {dep.status}
-                      </Badge>
-                      <span className="font-medium text-sm truncate">{dep.title}</span>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 ml-2 flex-shrink-0"
-                    onClick={() => handleRemoveDependency(dep.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-muted-foreground text-sm text-center py-2">
-              No dependencies added
-            </div>
-          )}
-          
-          {dependencies.dependedOnBy.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-medium mb-2">Dependent Tasks</h4>
-              <div className="space-y-2">
-                {dependencies.dependedOnBy.map(dep => (
-                  <div 
-                    key={dep.id}
-                    className="flex items-center p-2 bg-muted/30 rounded-md"
-                  >
-                    <ChevronRight className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className={getStatusClass(dep.status)}>
-                          {dep.status}
-                        </Badge>
-                        <span className="font-medium text-sm truncate">{dep.title}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Dialog for adding dependencies */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Task Dependency</DialogTitle>
-            <DialogDescription>
-              Select a task that needs to be completed before this task.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            <Input
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="mb-4"
-            />
-            
-            <ScrollArea className="h-60">
-              {filteredTasks.length > 0 ? (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-8 gap-1" 
+            onClick={() => setIsAddDependencyOpen(true)}
+          >
+            <Plus size={14} />
+            Add
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {dependencies.dependsOn.length === 0 && dependencies.dependedOnBy.length === 0 ? (
+          <div className="text-center text-muted-foreground text-sm py-4">
+            No dependencies
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {dependencies.dependsOn.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">This task depends on:</h4>
                 <div className="space-y-2">
-                  {filteredTasks.map(task => (
-                    <div 
-                      key={task.id}
-                      className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md cursor-pointer"
-                      onClick={() => handleAddDependency(task.id)}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          {task.status === 'completed' ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <AlertCircle className="h-4 w-4 text-yellow-500" />
-                          )}
-                          <span className="font-medium text-sm">{task.title}</span>
+                  {dependencies.dependsOn.map(task => (
+                    <div key={task.id} className="flex items-center justify-between bg-background p-2 rounded-md border">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{task.title}</span>
+                          <Badge variant="outline" className={getStatusClass(task.status)}>
+                            {task.status}
+                          </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mt-1">
-                          Due: {new Date(task.dueDate).toLocaleDateString()}
-                        </p>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {task.status === 'completed' ? (
+                            <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                              <CheckCircle2 size={12} />
+                              Completed
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              {task.progress}% complete
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Button variant="ghost" size="sm" className="ml-2">
-                        <Plus className="h-4 w-4" />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveDependency(task.id)}
+                      >
+                        <XCircle size={14} />
                       </Button>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
-                  No matching tasks found
+              </div>
+            )}
+            
+            {dependencies.dependedOnBy.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium mb-2">These tasks depend on this task:</h4>
+                <div className="space-y-2">
+                  {dependencies.dependedOnBy.map(task => (
+                    <div key={task.id} className="flex items-center justify-between bg-accent/30 p-2 rounded-md border">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{task.title}</span>
+                          <Badge variant="outline" className={getStatusClass(task.status)}>
+                            {task.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </ScrollArea>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+      
+      <Dialog open={isAddDependencyOpen} onOpenChange={setIsAddDependencyOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Task Dependency</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm mb-4">
+              Select a task that must be completed before this task can be started.
+            </p>
+            
+            <Select onValueChange={setSelectedDependencyId} value={selectedDependencyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a task" />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableDependencyTasks().map(task => (
+                  <SelectItem key={task.id} value={task.id}>
+                    {task.title} ({task.status})
+                  </SelectItem>
+                ))}
+                {getAvailableDependencyTasks().length === 0 && (
+                  <SelectItem value="none" disabled>
+                    No available tasks
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            
+            {dependencies.dependedOnBy.length > 0 && (
+              <div className="flex items-center gap-2 mt-4 p-2 rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400">
+                <AlertTriangle size={16} />
+                <p className="text-xs">
+                  Note: Be careful with dependencies as other tasks depend on this task.
+                </p>
+              </div>
+            )}
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsAddDependencyOpen(false)}>
               Cancel
+            </Button>
+            <Button onClick={handleAddDependency}>
+              Add Dependency
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Card>
   );
-}
+};

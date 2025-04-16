@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +14,14 @@ interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskCreated: (task: any) => void;
+  initialDueDate?: string;
 }
 
 export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ 
   open, 
   onOpenChange,
-  onTaskCreated
+  onTaskCreated,
+  initialDueDate
 }) => {
   const { toast } = useToast();
   const { statuses } = useStatusStore();
@@ -31,6 +33,13 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   const [status, setStatus] = useState('pending');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState('unassigned');
+
+  // Set initial due date if provided
+  useEffect(() => {
+    if (initialDueDate) {
+      setDueDate(initialDueDate);
+    }
+  }, [initialDueDate]);
 
   const resetForm = () => {
     setTitle('');

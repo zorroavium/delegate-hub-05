@@ -138,7 +138,7 @@ export function TaskCalendarView() {
   };
   
   // Custom day rendering for the calendar
-  const renderDay = (day: Date, selectedDay: Date[], locale: string) => {
+  const renderDay = (day: Date, props: any) => {
     const dateStr = format(day, 'yyyy-MM-dd');
     const hasTasksForDay = tasksByDate[dateStr] && tasksByDate[dateStr].length > 0;
     const tasksForDay = tasksByDate[dateStr] || [];
@@ -210,14 +210,14 @@ export function TaskCalendarView() {
           <CardContent>
             <CalendarComponent
               mode="single"
-              selected={selectedDate ? [selectedDate] : []}
+              selected={selectedDate || undefined}
               month={month}
               onMonthChange={setMonth}
               className="rounded-md border"
               onDayClick={handleDayClick}
               onDayDoubleClick={handleDayDoubleClick}
               components={{
-                Day: ({ date, ...props }) => renderDay(date!, props.selected, props.locale || 'en-US')
+                Day: ({ date, ...props }) => renderDay(date!, props)
               }}
             />
           </CardContent>

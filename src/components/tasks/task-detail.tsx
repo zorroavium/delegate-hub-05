@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { 
@@ -26,7 +27,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { CustomButton } from '../ui/custom-button';
 import { useNavigate } from 'react-router-dom';
-import { Task, useTaskStore, TaskActivity } from '@/store/useTaskStore';
+import { Task, useTaskStore, TaskActivity, TaskAttachment, RecurringConfig } from '@/store/useTaskStore';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -75,7 +76,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   const [isReassignDialogOpen, setIsReassignDialogOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [isRecurring, setIsRecurring] = useState(!!initialTask.isRecurring);
-  const [recurringConfig, setRecurringConfig] = useState(initialTask.recurringConfig || {
+  const [recurringConfig, setRecurringConfig] = useState<RecurringConfig>(initialTask.recurringConfig || {
     frequency: 'weekly',
     interval: 1,
     endAfter: 5
@@ -175,7 +176,7 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({ task: initialTask, class
   };
 
   const handleSaveEdit = () => {
-    const updatedTask = {
+    const updatedTask: Task = {
       ...editedTask,
       isRecurring,
       recurringConfig: isRecurring ? recurringConfig : undefined

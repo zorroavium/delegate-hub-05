@@ -1,12 +1,10 @@
 
-import React, { useState } from 'react';
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import React from 'react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { RecurringConfig } from '@/store/useTaskStore';
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface RecurringTaskConfigProps {
   value: RecurringConfig;
@@ -15,235 +13,111 @@ interface RecurringTaskConfigProps {
   onToggle: (enabled: boolean) => void;
 }
 
-export function RecurringTaskConfig({ 
-  value, 
-  onChange, 
-  isEnabled, 
-  onToggle 
-}: RecurringTaskConfigProps) {
-  const handleFrequencyChange = (frequency: string) => {
+export const RecurringTaskConfig: React.FC<RecurringTaskConfigProps> = ({
+  value,
+  onChange,
+  isEnabled,
+  onToggle
+}) => {
+  const handleFrequencyChange = (frequency: "daily" | "weekly" | "monthly" | "custom") => {
     onChange({
       ...value,
-      frequency: frequency as RecurringConfig['frequency']
+      frequency
     });
   };
-  
+
   const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const interval = parseInt(e.target.value);
-    if (!isNaN(interval) && interval > 0) {
-      onChange({
-        ...value,
-        interval
-      });
-    }
+    const interval = parseInt(e.target.value) || 1;
+    onChange({
+      ...value,
+      interval: Math.max(1, interval)
+    });
   };
-  
+
   const handleEndAfterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const endAfter = parseInt(e.target.value);
-    if (!isNaN(endAfter) && endAfter > 0) {
-      onChange({
-        ...value,
-        endAfter,
-        endDate: undefined // Clear end date when using end after
-      });
-    }
+    const endAfter = parseInt(e.target.value) || 1;
+    onChange({
+      ...value,
+      endAfter: Math.max(1, endAfter)
+    });
   };
-  
+
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({
       ...value,
-      endDate: e.target.value,
-      endAfter: undefined // Clear end after when using end date
+      endDate: e.target.value
     });
   };
-  
-  const handleDayOfWeekToggle = (day: number) => {
-    const currentDays = value.daysOfWeek || [];
-    let newDays: number[];
-    
-    if (currentDays.includes(day)) {
-      newDays = currentDays.filter(d => d !== day);
-    } else {
-      newDays = [...currentDays, day];
-    }
-    
-    onChange({
-      ...value,
-      daysOfWeek: newDays
-    });
-  };
-  
-  const handleDayOfMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const dayOfMonth = parseInt(e.target.value);
-    if (!isNaN(dayOfMonth) && dayOfMonth > 0 && dayOfMonth <= 31) {
-      onChange({
-        ...value,
-        dayOfMonth
-      });
-    }
-  };
-  
-  const getDayLabel = (day: number) => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[day];
-  };
-  
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4 border rounded-md bg-muted/20">
       <div className="flex items-center justify-between">
         <Label htmlFor="recurring-toggle" className="font-medium">Recurring Task</Label>
-        <Switch 
-          id="recurring-toggle" 
-          checked={isEnabled} 
+        <Switch
+          id="recurring-toggle"
+          checked={isEnabled}
           onCheckedChange={onToggle}
         />
       </div>
-      
+
       {isEnabled && (
-        <>
-          <Separator className="my-4" />
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Frequency</Label>
-                <Select 
-                  value={value.frequency} 
-                  onValueChange={handleFrequencyChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="custom">Custom</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="interval">Every</Label>
-                <div className="flex items-center space-x-2">
-                  <Input 
-                    id="interval" 
-                    type="number" 
-                    min="1"
-                    value={value.interval} 
-                    onChange={handleIntervalChange}
-                    className="w-20"
-                  />
-                  <span>
-                    {value.frequency === 'daily' ? 'day(s)' : 
-                     value.frequency === 'weekly' ? 'week(s)' : 
-                     value.frequency === 'monthly' ? 'month(s)' : 'interval'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            {value.frequency === 'weekly' && (
-              <div className="space-y-2">
-                <Label>Days of Week</Label>
-                <div className="flex flex-wrap gap-2">
-                  {[0, 1, 2, 3, 4, 5, 6].map(day => (
-                    <div key={day} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`day-${day}`} 
-                        checked={(value.daysOfWeek || []).includes(day)}
-                        onCheckedChange={() => handleDayOfWeekToggle(day)}
-                      />
-                      <Label htmlFor={`day-${day}`} className="text-sm">
-                        {getDayLabel(day)}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {value.frequency === 'monthly' && (
-              <div className="space-y-2">
-                <Label htmlFor="day-of-month">Day of Month</Label>
-                <Input 
-                  id="day-of-month" 
-                  type="number" 
-                  min="1" 
-                  max="31"
-                  value={value.dayOfMonth || 1} 
-                  onChange={handleDayOfMonthChange}
-                  className="w-20"
-                />
-              </div>
-            )}
-            
-            <Separator className="my-4" />
-            
-            <div className="space-y-2">
-              <Label className="block font-medium">End</Label>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="radio" 
-                      id="end-after" 
-                      name="end-type"
-                      checked={!!value.endAfter} 
-                      onChange={() => onChange({...value, endAfter: 5, endDate: undefined})}
-                    />
-                    <Label htmlFor="end-after">After</Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 ml-6">
-                    <Input 
-                      type="number" 
-                      min="1"
-                      value={value.endAfter || ''} 
-                      onChange={handleEndAfterChange}
-                      disabled={!value.endAfter}
-                      className="w-20"
-                    />
-                    <span>occurrence(s)</span>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="radio" 
-                      id="end-on-date" 
-                      name="end-type"
-                      checked={!!value.endDate} 
-                      onChange={() => {
-                        const date = new Date();
-                        date.setMonth(date.getMonth() + 3);
-                        onChange({
-                          ...value, 
-                          endDate: date.toISOString().split('T')[0], 
-                          endAfter: undefined
-                        });
-                      }}
-                    />
-                    <Label htmlFor="end-on-date">On date</Label>
-                  </div>
-                  
-                  <div className="ml-6">
-                    <Input 
-                      type="date" 
-                      value={value.endDate || ''} 
-                      onChange={handleEndDateChange}
-                      disabled={!value.endDate}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="space-y-4 pt-2">
+          <div className="space-y-2">
+            <Label htmlFor="frequency">Frequency</Label>
+            <Select 
+              value={value.frequency} 
+              onValueChange={(val) => handleFrequencyChange(val as "daily" | "weekly" | "monthly" | "custom")}
+            >
+              <SelectTrigger id="frequency">
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </>
+
+          <div className="space-y-2">
+            <Label htmlFor="interval">
+              {value.frequency === 'daily' && 'Repeat every X days'}
+              {value.frequency === 'weekly' && 'Repeat every X weeks'}
+              {value.frequency === 'monthly' && 'Repeat every X months'}
+              {value.frequency === 'custom' && 'Custom interval (days)'}
+            </Label>
+            <Input
+              id="interval"
+              type="number"
+              min="1"
+              value={value.interval}
+              onChange={handleIntervalChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="end-after">End after X occurrences</Label>
+            <Input
+              id="end-after"
+              type="number"
+              min="1"
+              value={value.endAfter}
+              onChange={handleEndAfterChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="end-date">Or end on specific date (optional)</Label>
+            <Input
+              id="end-date"
+              type="date"
+              value={value.endDate || ''}
+              onChange={handleEndDateChange}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
-}
+};

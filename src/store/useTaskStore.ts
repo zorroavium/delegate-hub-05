@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useEmployeeStore } from './useEmployeeStore';
+import { useStatusStore } from './useStatusStore';
 
 // Mock data for initial store
 const tasksMock = [
