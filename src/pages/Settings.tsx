@@ -2,19 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { SidebarLayout } from '@/components/layout/sidebar';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Moon, Sun, User, Shield, Globe, Mail, MessageSquare, Workflow, Settings2 } from 'lucide-react';
+import { 
+  Bell, 
+  Moon, 
+  Sun, 
+  User, 
+  Shield, 
+  Globe, 
+  Mail, 
+  MessageSquare, 
+  Workflow, 
+  Settings2,
+  MailPlus,
+  Calendar as CalendarIcon,
+  Github,
+  Gitlab,
+  FileCode,
+  Bot,
+  Slack,
+  Image,
+  Sparkles,
+  Trello,
+  GoogleChrome,
+  Twitter,
+  FileText,
+  ToggleLeft,
+  CreditCard,
+  Webhooks,
+  BarChart,
+  Figma,
+  Database
+} from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { TaskStatusSettings } from '@/components/settings/task-status-settings';
 import { EmployeeManagement } from '@/components/settings/employee-management';
 import { ThemeSettings } from '@/components/settings/theme-settings';
 import { z } from 'zod';
+import { Textarea } from '@/components/ui/textarea';
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -59,8 +90,29 @@ const SettingsPage = () => {
   const [integrations, setIntegrations] = useState({
     googleCalendar: false,
     slack: false,
-    trello: false
+    trello: false,
+    github: false,
+    gitlab: false,
+    figma: false,
+    zapier: false,
+    stripe: false,
+    twitter: false,
+    googleDrive: false,
+    microsoftTeams: false,
+    asana: false,
+    adobeCreativeCloud: false,
+    dropbox: false,
+    zoom: false,
+    mailchimp: false,
+    jira: false,
+    salesforce: false,
+    hubspot: false,
+    openai: false
   });
+
+  const [zapierWebhook, setZapierWebhook] = useState('');
+  const [stripePublicKey, setStripePublicKey] = useState('');
+  const [openaiKey, setOpenaiKey] = useState('');
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -168,22 +220,59 @@ const SettingsPage = () => {
     });
   };
 
-  const handleConnectIntegration = (integration: 'googleCalendar' | 'slack' | 'trello') => {
+  const handleConnectIntegration = (integration: keyof typeof integrations) => {
     setIntegrations(prev => ({
       ...prev,
       [integration]: !prev[integration]
     }));
     
     const status = !integrations[integration] ? 'connected' : 'disconnected';
-    const integrationNames = {
+    const integrationNames: Record<string, string> = {
       googleCalendar: 'Google Calendar',
       slack: 'Slack',
-      trello: 'Trello'
+      trello: 'Trello',
+      github: 'GitHub',
+      gitlab: 'GitLab',
+      figma: 'Figma',
+      zapier: 'Zapier',
+      stripe: 'Stripe',
+      twitter: 'Twitter',
+      googleDrive: 'Google Drive',
+      microsoftTeams: 'Microsoft Teams',
+      asana: 'Asana',
+      adobeCreativeCloud: 'Adobe Creative Cloud',
+      dropbox: 'Dropbox',
+      zoom: 'Zoom',
+      mailchimp: 'Mailchimp',
+      jira: 'Jira',
+      salesforce: 'Salesforce',
+      hubspot: 'HubSpot',
+      openai: 'OpenAI'
     };
     
     toast({
       title: `Integration ${status}`,
       description: `${integrationNames[integration]} has been ${status} successfully.`
+    });
+  };
+
+  const saveApiKey = (type: string) => {
+    let message = '';
+    switch (type) {
+      case 'zapier':
+        message = 'Zapier webhook URL saved';
+        break;
+      case 'stripe':
+        message = 'Stripe API key saved';
+        break;
+      case 'openai':
+        message = 'OpenAI API key saved';
+        break;
+    }
+
+    toast({
+      title: "API Key Saved",
+      description: message
     });
   };
 
@@ -513,63 +602,376 @@ const SettingsPage = () => {
                       Connect with other tools and services to enhance your workflow.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid gap-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
-                            <Mail className="text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-base font-medium">Google Calendar</h4>
-                            <p className="text-sm text-muted-foreground">Sync your tasks with Google Calendar</p>
-                          </div>
-                        </div>
-                        <Button 
-                          variant={integrations.googleCalendar ? "default" : "outline"}
-                          onClick={() => handleConnectIntegration('googleCalendar')}
-                        >
-                          {integrations.googleCalendar ? 'Disconnect' : 'Connect'}
-                        </Button>
-                      </div>
+                  <CardContent>
+                    <Tabs defaultValue="productivity" className="w-full">
+                      <TabsList className="grid grid-cols-4 mb-4">
+                        <TabsTrigger value="productivity">Productivity</TabsTrigger>
+                        <TabsTrigger value="development">Development</TabsTrigger>
+                        <TabsTrigger value="marketing">Marketing</TabsTrigger>
+                        <TabsTrigger value="ai">AI & Automation</TabsTrigger>
+                      </TabsList>
                       
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-md bg-green-100 flex items-center justify-center dark:bg-green-900/50">
-                            <MessageSquare className="text-green-600 dark:text-green-400" />
+                      <TabsContent value="productivity" className="space-y-6">
+                        <div className="grid gap-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                                <CalendarIcon className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Google Calendar</h4>
+                                <p className="text-sm text-muted-foreground">Sync your tasks with Google Calendar</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.googleCalendar ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('googleCalendar')}
+                            >
+                              {integrations.googleCalendar ? 'Disconnect' : 'Connect'}
+                            </Button>
                           </div>
-                          <div>
-                            <h4 className="text-base font-medium">Slack</h4>
-                            <p className="text-sm text-muted-foreground">Get notifications in your Slack channels</p>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-green-100 flex items-center justify-center dark:bg-green-900/50">
+                                <Slack className="text-green-600 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Slack</h4>
+                                <p className="text-sm text-muted-foreground">Get notifications in your Slack channels</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.slack ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('slack')}
+                            >
+                              {integrations.slack ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                                <Trello className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Trello</h4>
+                                <p className="text-sm text-muted-foreground">Import boards and tasks from Trello</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.trello ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('trello')}
+                            >
+                              {integrations.trello ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
+                                <MessageSquare className="text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Microsoft Teams</h4>
+                                <p className="text-sm text-muted-foreground">Share tasks and updates in Teams</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.microsoftTeams ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('microsoftTeams')}
+                            >
+                              {integrations.microsoftTeams ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-yellow-100 flex items-center justify-center dark:bg-yellow-900/50">
+                                <FileText className="text-yellow-600 dark:text-yellow-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Google Drive</h4>
+                                <p className="text-sm text-muted-foreground">Attach files from Google Drive</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.googleDrive ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('googleDrive')}
+                            >
+                              {integrations.googleDrive ? 'Disconnect' : 'Connect'}
+                            </Button>
                           </div>
                         </div>
-                        <Button 
-                          variant={integrations.slack ? "default" : "outline"}
-                          onClick={() => handleConnectIntegration('slack')}
-                        >
-                          {integrations.slack ? 'Disconnect' : 'Connect'}
-                        </Button>
-                      </div>
+                      </TabsContent>
                       
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
-                            <Globe className="text-purple-600 dark:text-purple-400" />
+                      <TabsContent value="development" className="space-y-6">
+                        <div className="grid gap-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center dark:bg-gray-800/50">
+                                <Github className="text-gray-800 dark:text-gray-300" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">GitHub</h4>
+                                <p className="text-sm text-muted-foreground">Link tasks to GitHub issues and PRs</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.github ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('github')}
+                            >
+                              {integrations.github ? 'Disconnect' : 'Connect'}
+                            </Button>
                           </div>
-                          <div>
-                            <h4 className="text-base font-medium">Trello</h4>
-                            <p className="text-sm text-muted-foreground">Import boards and tasks from Trello</p>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-orange-100 flex items-center justify-center dark:bg-orange-900/50">
+                                <Gitlab className="text-orange-600 dark:text-orange-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">GitLab</h4>
+                                <p className="text-sm text-muted-foreground">Connect tasks with GitLab issues</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.gitlab ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('gitlab')}
+                            >
+                              {integrations.gitlab ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                                <FileCode className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Jira</h4>
+                                <p className="text-sm text-muted-foreground">Two-way sync with Jira tickets</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.jira ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('jira')}
+                            >
+                              {integrations.jira ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
+                                <Figma className="text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Figma</h4>
+                                <p className="text-sm text-muted-foreground">Embed Figma designs in tasks</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.figma ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('figma')}
+                            >
+                              {integrations.figma ? 'Disconnect' : 'Connect'}
+                            </Button>
                           </div>
                         </div>
-                        <Button 
-                          variant={integrations.trello ? "default" : "outline"}
-                          onClick={() => handleConnectIntegration('trello')}
-                        >
-                          {integrations.trello ? 'Disconnect' : 'Connect'}
-                        </Button>
-                      </div>
-                    </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="marketing" className="space-y-6">
+                        <div className="grid gap-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                                <Twitter className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Twitter</h4>
+                                <p className="text-sm text-muted-foreground">Schedule tweets and monitor mentions</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.twitter ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('twitter')}
+                            >
+                              {integrations.twitter ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-yellow-100 flex items-center justify-center dark:bg-yellow-900/50">
+                                <MailPlus className="text-yellow-600 dark:text-yellow-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Mailchimp</h4>
+                                <p className="text-sm text-muted-foreground">Manage email campaigns from tasks</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.mailchimp ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('mailchimp')}
+                            >
+                              {integrations.mailchimp ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-orange-100 flex items-center justify-center dark:bg-orange-900/50">
+                                <Database className="text-orange-600 dark:text-orange-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">HubSpot</h4>
+                                <p className="text-sm text-muted-foreground">Connect leads and contacts to tasks</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.hubspot ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('hubspot')}
+                            >
+                              {integrations.hubspot ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-md bg-blue-100 flex items-center justify-center dark:bg-blue-900/50">
+                                <BarChart className="text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-medium">Salesforce</h4>
+                                <p className="text-sm text-muted-foreground">Link opportunities with your tasks</p>
+                              </div>
+                            </div>
+                            <Button 
+                              variant={integrations.salesforce ? "default" : "outline"}
+                              onClick={() => handleConnectIntegration('salesforce')}
+                            >
+                              {integrations.salesforce ? 'Disconnect' : 'Connect'}
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="ai" className="space-y-6">
+                        <div className="grid gap-6">
+                          <div className="flex flex-col space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-md bg-orange-100 flex items-center justify-center dark:bg-orange-900/50">
+                                  <Webhooks className="text-orange-600 dark:text-orange-400" />
+                                </div>
+                                <div>
+                                  <h4 className="text-base font-medium">Zapier</h4>
+                                  <p className="text-sm text-muted-foreground">Automate workflows with Zapier</p>
+                                </div>
+                              </div>
+                              <Button 
+                                variant={integrations.zapier ? "default" : "outline"}
+                                onClick={() => handleConnectIntegration('zapier')}
+                              >
+                                {integrations.zapier ? 'Disconnect' : 'Connect'}
+                              </Button>
+                            </div>
+                            {integrations.zapier && (
+                              <div className="ml-16 space-y-2">
+                                <Label htmlFor="zapier-webhook">Zapier Webhook URL</Label>
+                                <div className="flex space-x-2">
+                                  <Input 
+                                    id="zapier-webhook" 
+                                    placeholder="https://hooks.zapier.com/..." 
+                                    value={zapierWebhook}
+                                    onChange={(e) => setZapierWebhook(e.target.value)}
+                                  />
+                                  <Button onClick={() => saveApiKey('zapier')}>Save</Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-col space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-md bg-purple-100 flex items-center justify-center dark:bg-purple-900/50">
+                                  <CreditCard className="text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div>
+                                  <h4 className="text-base font-medium">Stripe</h4>
+                                  <p className="text-sm text-muted-foreground">Track payments and subscriptions</p>
+                                </div>
+                              </div>
+                              <Button 
+                                variant={integrations.stripe ? "default" : "outline"}
+                                onClick={() => handleConnectIntegration('stripe')}
+                              >
+                                {integrations.stripe ? 'Disconnect' : 'Connect'}
+                              </Button>
+                            </div>
+                            {integrations.stripe && (
+                              <div className="ml-16 space-y-2">
+                                <Label htmlFor="stripe-key">Stripe Public Key</Label>
+                                <div className="flex space-x-2">
+                                  <Input 
+                                    id="stripe-key" 
+                                    placeholder="pk_..." 
+                                    value={stripePublicKey}
+                                    onChange={(e) => setStripePublicKey(e.target.value)}
+                                  />
+                                  <Button onClick={() => saveApiKey('stripe')}>Save</Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex flex-col space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-md bg-green-100 flex items-center justify-center dark:bg-green-900/50">
+                                  <Sparkles className="text-green-600 dark:text-green-400" />
+                                </div>
+                                <div>
+                                  <h4 className="text-base font-medium">OpenAI</h4>
+                                  <p className="text-sm text-muted-foreground">Generate content and summaries</p>
+                                </div>
+                              </div>
+                              <Button 
+                                variant={integrations.openai ? "default" : "outline"}
+                                onClick={() => handleConnectIntegration('openai')}
+                              >
+                                {integrations.openai ? 'Disconnect' : 'Connect'}
+                              </Button>
+                            </div>
+                            {integrations.openai && (
+                              <div className="ml-16 space-y-2">
+                                <Label htmlFor="openai-key">OpenAI API Key</Label>
+                                <div className="flex space-x-2">
+                                  <Input 
+                                    id="openai-key" 
+                                    placeholder="sk-..." 
+                                    type="password"
+                                    value={openaiKey}
+                                    onChange={(e) => setOpenaiKey(e.target.value)}
+                                  />
+                                  <Button onClick={() => saveApiKey('openai')}>Save</Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
+                  <CardFooter className="flex justify-between border-t pt-5">
+                    <div className="text-sm text-muted-foreground">
+                      <p>Need help setting up integrations?</p>
+                      <a href="#" className="text-primary hover:underline">View the documentation</a>
+                    </div>
+                    <Button variant="outline">Check for Updates</Button>
+                  </CardFooter>
                 </Card>
               </TabsContent>
             </div>
