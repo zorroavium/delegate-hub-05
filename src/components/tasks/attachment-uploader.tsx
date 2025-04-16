@@ -5,12 +5,14 @@ import { Paperclip, UploadCloud, FileText, Image, FileArchive, File, X, CheckCir
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { TaskAttachment } from '@/store/useTaskStore';
+import { cn } from '@/lib/utils';
 
 interface AttachmentUploaderProps {
   onUpload: (file: Omit<TaskAttachment, 'id'>) => void;
   className?: string;
   maxSize?: number; // in MB
   acceptedFileTypes?: string[];
+  showPreview?: boolean;
 }
 
 export const AttachmentIcon = ({ type }: { type: string }) => {
@@ -47,11 +49,14 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
   onUpload,
   className,
   maxSize = 10, // Default 10MB
-  acceptedFileTypes = ['*']
+  acceptedFileTypes = ['*'],
+  showPreview = true
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -103,6 +108,18 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
     });
   };
   
+  const isImageFile = (file: File) => {
+    return file.type.startsWith('image/');
+  };
+  
+  const clearPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewFile(null);
+    setPreviewUrl(null);
+  };
+  
   const handleFile = (file: File) => {
     // Check file size
     if (file.size > maxSize * 1024 * 1024) {
@@ -122,6 +139,16 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
         variant: "destructive"
       });
       return;
+    }
+    
+    // Clear previous preview
+    clearPreview();
+    
+    // Generate preview for image files
+    if (showPreview && isImageFile(file)) {
+      setPreviewFile(file);
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
     }
     
     // Simulate upload
@@ -170,6 +197,12 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
     }
   };
   
+  const cancelUpload = () => {
+    setIsUploading(false);
+    setUploadProgress(0);
+    clearPreview();
+  };
+  
   return (
     <div className={className}>
       <input
@@ -181,7 +214,31 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
       />
       
       {isUploading ? (
-        <div className="border border-border rounded-lg p-4 bg-background flex flex-col items-center justify-center">
+        <div className="border border-border rounded-lg p-4 bg-background">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium truncate">
+              {previewFile?.name || "Uploading file..."}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6" 
+              onClick={cancelUpload}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+          
+          {previewUrl && (
+            <div className="relative mb-4 overflow-hidden rounded-md border border-border bg-background">
+              <img 
+                src={previewUrl} 
+                alt="Preview" 
+                className="w-full h-auto max-h-40 object-contain"
+              />
+            </div>
+          )}
+          
           <div className="w-full mb-2">
             <Progress value={uploadProgress} className="h-2" />
           </div>
@@ -191,11 +248,12 @@ export const AttachmentUploader: React.FC<AttachmentUploaderProps> = ({
         </div>
       ) : (
         <div
-          className={`border border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          className={cn(
+            'border border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors',
             isDragging 
               ? 'border-primary bg-primary/5' 
               : 'border-border hover:border-primary/50 hover:bg-accent/50'
-          }`}
+          )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
